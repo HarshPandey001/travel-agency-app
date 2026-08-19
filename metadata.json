@@ -1,0 +1,6 @@
+{
+  "name": "WanderVibe Social Travel",
+  "description": "Curated group social travel agency connecting travelers through organized journeys, dynamic seat selection, and authentic shared adventures.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
