@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
   port: Number(process.env.SMTP_PORT) || 465,
   secure: Boolean(process.env.SMTP_SECURE !== 'false'), // true for 465, false for 587
   auth: {
-    user: process.env.SMTP_USER || 'hapa1929@gmail.com',
+    user: process.env.SMTP_USER || 'mynameisharshji@gmail.com',
     pass: process.env.SMTP_PASS || 'demo_app_password' // Render Env Var
   }
 });
@@ -132,7 +132,7 @@ app.post('/api/send-booking-email', async (req, res) => {
 
     // Dispatch email
     const mailOptions = {
-      from: `"WanderVibe Travel Pass" <${process.env.SMTP_USER || 'hapa1929@gmail.com'}>`,
+      from: `"WanderVibe Travel Pass" <${process.env.SMTP_USER || 'mynameisharshji@gmail.com'}>`,
       to: customerEmail,
       subject: `🎉 Booking Confirmed! Pass ID: ${bookingId} - ${tripTitle}`,
       html: htmlContent
