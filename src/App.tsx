@@ -39,7 +39,7 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('wv_user');
-    return saved ? JSON.parse(saved) : INITIAL_USER;
+    return saved ? JSON.parse(saved) : null;
   });
 
   // Modal States
