@@ -28,7 +28,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
       const { user, error: authError } = await loginWithGoogle();
       if (authError || !user) {
         console.warn("Google OAuth Login popup notice:", authError);
-        // Fallback login as Agency Owner Admin (hapa1929@gmail.com)
+        // Fallback login as Agency Owner Admin (mynameisharshji@gmail.com)
         const userEmail = ADMIN_EMAIL;
         const mockGoogleUser: Partial<UserProfile> = {
           id: 'usr-admin-owner',
@@ -99,8 +99,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
     }
   };
 
-  const handleDemoSignIn = (role: 'Admin (hapa1929@gmail.com)' | 'Aarav (Traveler)' | 'Priya (Solo Traveler)') => {
-    if (role === 'Admin (hapa1929@gmail.com)') {
+  const handleDemoSignIn = (role: 'Admin (mynameisharshji@gmail.com)' | 'Aarav (Traveler)' | 'Priya (Solo Traveler)') => {
+    if (role === 'Admin (mynameisharshji@gmail.com)') {
       onLoginSuccess({
         id: 'usr-admin-01',
         name: 'Harsh Vardhan (Agency Owner)',

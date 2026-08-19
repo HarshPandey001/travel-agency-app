@@ -17,7 +17,7 @@
 - **👫 1:1 Dynamic Gender Ratio Maps**: Real-time seat map showing male/female co-passengers for safe, balanced group vibes.
 - **✨ Google Gemini AI Admin Copilot**: Auto-generate custom trip itineraries, HD cover photos, and taglines in 1 click.
 - **📧 Node.js SMTP Email Dispatcher (`server.js`)**: Instant PDF-style digital boarding pass emailed upon successful payment.
-- **🛡️ Locked Owner Access**: Client-hidden Agency Admin Control Panel protected for authorized owner email (`hapa1929@gmail.com`).
+- **🛡️ Locked Owner Access**: Client-hidden Agency Admin Control Panel protected for authorized owner email (`mynameisharshji@gmail.com`).
 - **🪙 WanderCoins & Referral Program**: Give ₹500 instant fare discount, earn 🪙 500 WanderCoins upon completed trip payment.
 
 ---
@@ -29,7 +29,7 @@
 | **Lead Owner & Founder** | **Harsh Pandey** |
 | **Registered HQ Address** | `Sector 5, C-133, GIDA, Gorakhpur, UP - 273209` |
 | **24/7 Emergency Helpline** | **`+91 63880 50042`** |
-| **Official Email** | **`hapa1929@gmail.com`** |
+| **Official Email** | **`mynameisharshji@gmail.com`** |
 
 ---
 
@@ -70,7 +70,7 @@ node server.js
 4. Add Environment Variables:
    - `SMTP_HOST`: `smtp.gmail.com`
    - `SMTP_PORT`: `465`
-   - `SMTP_USER`: `hapa1929@gmail.com`
+   - `SMTP_USER`: `mynameisharshji@gmail.com`
    - `SMTP_PASS`: *(Your Gmail 16-character App Password)*
 
 ---

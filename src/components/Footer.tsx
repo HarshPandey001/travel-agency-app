@@ -70,7 +70,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </p>
               <p className="flex items-center space-x-2">
                 <Mail className="w-4 h-4 text-cyan-400" />
-                <span>hapa1929@gmail.com</span>
+                <span>mynameisharshji@gmail.com</span>
               </p>
               <p className="flex items-start space-x-2">
                 <MapPin className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
