@@ -45,6 +45,15 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'WanderVibe Email Dispatcher', timestamp: new Date().toISOString() });
 });
 
+// Auto Keep-Alive Heartbeat: Pings /health every 4 minutes to keep Render Web Service 24/7 AWAKE
+const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || 'https://wandervibe-email-service.onrender.com';
+setInterval(() => {
+  fetch(`${RENDER_EXTERNAL_URL}/health`)
+    .then(r => r.json())
+    .then(data => console.log(`[KEEP-ALIVE HEARTBEAT 24/7] Render backend active at ${new Date().toLocaleTimeString('en-IN')} -> Status: ${data.status}`))
+    .catch(err => console.log(`[KEEP-ALIVE NOTICE] Heartbeat check: ${err.message}`));
+}, 4 * 60 * 1000); // Ping every 4 minutes (240,000 ms)
+
 // Friendly GET endpoint for /api/send-booking-email
 app.get('/api/send-booking-email', (req, res) => {
   res.json({

@@ -97,6 +97,17 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Warm up Render Backend SMTP Server on Mount & Ping every 4 minutes (Prevents Render Sleep Mode)
+  useEffect(() => {
+    const pingBackend = () => {
+      fetch('https://wandervibe-email-service.onrender.com/health')
+        .catch(() => {});
+    };
+    pingBackend();
+    const interval = setInterval(pingBackend, 4 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Handlers
   const handleSelectTrip = (trip: Trip) => {
     setSelectedTrip(trip);
