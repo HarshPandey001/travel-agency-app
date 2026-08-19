@@ -8,6 +8,17 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Enable permissive CORS for cross-origin requests from localhost & deployed domains
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
@@ -32,6 +43,15 @@ const transporter = nodemailer.createTransport({
 // Health Check endpoint for Render
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'WanderVibe Email Dispatcher', timestamp: new Date().toISOString() });
+});
+
+// Friendly GET endpoint for /api/send-booking-email
+app.get('/api/send-booking-email', (req, res) => {
+  res.json({
+    status: 'online',
+    service: 'WanderVibe SMTP Email Dispatcher API',
+    instruction: 'Send a POST request with booking payload to trigger confirmation email.'
+  });
 });
 
 // POST Endpoint: Send Booking Confirmation Email
