@@ -162,4 +162,5 @@ app.post('/api/send-booking-email', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 WanderVibe SMTP Email Server running on port ${PORT}`);
+  console.log(`📧 Configured Sender Email: ${rawUser}`);
 });
