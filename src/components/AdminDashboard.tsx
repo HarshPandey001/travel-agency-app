@@ -1092,88 +1092,102 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <th className="p-3">Booking ID</th>
                     <th className="p-3">Seats</th>
                     <th className="p-3">Traveler Name</th>
-                    <th className="p-3">Mobile & City</th>
+                    <th className="p-3">Phone & Email</th>
                     <th className="p-3">Paid / Hub Due</th>
                     <th className="p-3">Email Status</th>
                     <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {tripBookings.map((b) => (
-                    <tr key={b.id} className="hover:bg-slate-800/40">
-                      <td className="p-3 font-mono font-bold text-emerald-400">
-                        {b.id}
-                        {b.status === 'CANCELLED' && (
-                          <span className="block text-[9px] text-rose-400 uppercase font-bold">CANCELLED</span>
-                        )}
-                      </td>
-                      <td className="p-3 font-bold text-white">#{b.seatNumbers.join(', #')}</td>
-                      <td className="p-3 font-bold text-white">
-                        {b.primaryTraveler.fullName} ({b.primaryTraveler.gender}, {b.primaryTraveler.age})
-                      </td>
-                      <td className="p-3">
-                        <a href={`tel:${b.primaryTraveler.phone}`} className="font-bold text-cyan-400 hover:underline flex items-center space-x-1">
-                          <span>📞 {b.primaryTraveler.phone}</span>
-                        </a>
-                        <span className="text-[10px] text-slate-500">{b.primaryTraveler.city}</span>
-                      </td>
-                      <td className="p-3">
-                        <div className="font-bold text-emerald-400">Paid: ₹{b.totalAmountPaid.toLocaleString('en-IN')}</div>
-                        {b.remainingBalanceDue && b.remainingBalanceDue > 0 ? (
-                          <span className="inline-block bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-bold mt-0.5">
-                            ⚠️ Hub Due: ₹{b.remainingBalanceDue.toLocaleString('en-IN')}
-                          </span>
-                        ) : (
-                          <span className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-bold mt-0.5">
-                            ✓ 100% Paid
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <div className="space-y-1">
-                          <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1 w-fit">
-                            <span>📧 Email Sent ✓</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleResendEmail(b)}
-                            disabled={resendingBookingId === b.id}
-                            className="text-[10px] text-slate-400 hover:text-white underline font-semibold flex items-center space-x-1"
-                          >
-                            <span>{resendingBookingId === b.id ? 'Sending...' : '🔄 Resend Mail'}</span>
-                          </button>
-                        </div>
-                      </td>
-                      <td className="p-3 text-right">
-                        {b.status === 'CANCELLED' ? (
-                          <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-1 rounded-xl text-[10px] font-bold">
-                            CANCELLED
-                          </span>
-                        ) : (
-                          <div className="flex items-center justify-end space-x-2">
-                            <a
-                              href={`https://wa.me/91${b.primaryTraveler.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                                `Hi ${b.primaryTraveler.fullName}! Your WanderVibe trip pass (ID: ${b.id}) for ${b.tripTitle} is CONFIRMED. Reserved Seats: #${b.seatNumbers.join(', #')}. Pickup: ${b.pickupPoint}. Paid: ₹${b.totalAmountPaid}. Due at Hub: ₹${b.remainingBalanceDue || 0}. Lead Owner Helpline: +91 63880 50042.`
-                              )}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl font-bold text-[11px] transition-all"
-                            >
-                              📲 WhatsApp
+                  {tripBookings.map((b) => {
+                    const cleanPhone = (b.primaryTraveler.phone || '').replace(/\D/g, '');
+                    const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+
+                    return (
+                      <tr key={b.id} className="hover:bg-slate-800/40">
+                        <td className="p-3 font-mono font-bold text-emerald-400">
+                          {b.id}
+                          {b.status === 'CANCELLED' && (
+                            <span className="block text-[9px] text-rose-400 uppercase font-bold">CANCELLED</span>
+                          )}
+                        </td>
+                        <td className="p-3 font-bold text-white">#{b.seatNumbers.join(', #')}</td>
+                        <td className="p-3 font-bold text-white">
+                          {b.primaryTraveler.fullName} ({b.primaryTraveler.gender}, {b.primaryTraveler.age})
+                        </td>
+                        <td className="p-3 space-y-0.5">
+                          {b.primaryTraveler.phone ? (
+                            <a href={`tel:${b.primaryTraveler.phone}`} className="font-bold text-cyan-400 hover:underline flex items-center space-x-1">
+                              <span>📞 {b.primaryTraveler.phone}</span>
                             </a>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic block">No Mobile</span>
+                          )}
+                          <a href={`mailto:${b.primaryTraveler.email}`} className="text-[11px] text-slate-300 hover:text-emerald-400 block truncate max-w-[180px]" title={b.primaryTraveler.email}>
+                            ✉️ {b.primaryTraveler.email}
+                          </a>
+                          <span className="text-[10px] text-slate-500 block">📍 {b.primaryTraveler.city}</span>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-bold text-emerald-400">Paid: ₹{b.totalAmountPaid.toLocaleString('en-IN')}</div>
+                          {b.remainingBalanceDue && b.remainingBalanceDue > 0 ? (
+                            <span className="inline-block bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-bold mt-0.5">
+                              ⚠️ Hub Due: ₹{b.remainingBalanceDue.toLocaleString('en-IN')}
+                            </span>
+                          ) : (
+                            <span className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-bold mt-0.5">
+                              ✓ 100% Paid
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <div className="space-y-1">
+                            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1 w-fit">
+                              <span>📧 Email Sent ✓</span>
+                            </span>
                             <button
                               type="button"
-                              onClick={() => setCancellingBooking(b)}
-                              className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:border-rose-500/50 px-2.5 py-1.5 rounded-xl font-bold text-[11px] transition-all flex items-center space-x-1"
+                              onClick={() => handleResendEmail(b)}
+                              disabled={resendingBookingId === b.id}
+                              className="text-[10px] text-slate-400 hover:text-white underline font-semibold flex items-center space-x-1"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Cancel</span>
+                              <span>{resendingBookingId === b.id ? 'Sending...' : '🔄 Resend Mail'}</span>
                             </button>
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="p-3 text-right">
+                          {b.status === 'CANCELLED' ? (
+                            <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-1 rounded-xl text-[10px] font-bold">
+                              CANCELLED
+                            </span>
+                          ) : (
+                            <div className="flex items-center justify-end space-x-2">
+                              {waPhone && (
+                                <a
+                                  href={`https://wa.me/${waPhone}?text=${encodeURIComponent(
+                                    `Hi ${b.primaryTraveler.fullName}! Your WanderVibe trip pass (ID: ${b.id}) for ${b.tripTitle} is CONFIRMED. Reserved Seats: #${b.seatNumbers.join(', #')}. Pickup: ${b.pickupPoint}. Paid: ₹${b.totalAmountPaid}. Due at Hub: ₹${b.remainingBalanceDue || 0}. Lead Owner Helpline: +91 63880 50042.`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl font-bold text-[11px] transition-all"
+                                >
+                                  📲 WhatsApp
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setCancellingBooking(b)}
+                                className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:border-rose-500/50 px-2.5 py-1.5 rounded-xl font-bold text-[11px] transition-all flex items-center space-x-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Cancel</span>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
