@@ -12,13 +12,20 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 // Configure Nodemailer Transporter
+const smtpPort = Number(process.env.SMTP_PORT) || 465;
+const rawUser = process.env.SMTP_USER || 'mynameisharshji@gmail.com';
+const rawPass = process.env.SMTP_PASS || 'qfhkqzhcwkhddjzf';
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 465,
-  secure: Boolean(process.env.SMTP_SECURE !== 'false'), // true for 465, false for 587
+  port: smtpPort,
+  secure: smtpPort === 465,
   auth: {
-    user: process.env.SMTP_USER || 'mynameisharshji@gmail.com',
-    pass: process.env.SMTP_PASS || 'qfhkqzhcwkhddjzf'
+    user: rawUser.trim(),
+    pass: rawPass.replace(/\s+/g, '')
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
