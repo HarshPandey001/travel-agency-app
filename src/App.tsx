@@ -156,6 +156,45 @@ export default function App() {
     setAnnouncements(prev => [announcement, ...prev]);
   };
 
+  const handleCancelBooking = (bookingId: string, cancellationReason: string = 'Cancelled by Agency Admin Desk') => {
+    const targetBooking = bookings.find(b => b.id === bookingId);
+    if (!targetBooking) return;
+
+    // Update booking status to CANCELLED
+    setBookings(prev => prev.map(b => {
+      if (b.id === bookingId) {
+        return {
+          ...b,
+          status: 'CANCELLED',
+          paymentStatus: 'CANCELLED',
+          cancellationReason
+        };
+      }
+      return b;
+    }));
+
+    // Release bus seats back to available
+    setTrips(prev => prev.map(t => {
+      if (t.id === targetBooking.tripId) {
+        const updatedSeats = t.seats.map(s => {
+          if (targetBooking.seatNumbers.includes(s.seatNumber)) {
+            return {
+              ...s,
+              status: 'available' as const,
+              bookedBy: undefined
+            };
+          }
+          return s;
+        });
+        return {
+          ...t,
+          seats: updatedSeats
+        };
+      }
+      return t;
+    }));
+  };
+
   const handleLoginSuccess = (userPartial: Partial<UserProfile>) => {
     const userEmail = userPartial.email || currentUser?.email || 'traveler@gmail.com';
     const isAdmin = userPartial.isAdmin !== undefined
@@ -322,6 +361,7 @@ export default function App() {
             onUpdateTrip={handleUpdateTrip}
             onDeleteTrip={handleDeleteTrip}
             onSendAnnouncement={handleSendAnnouncement}
+            onCancelBooking={handleCancelBooking}
           />
         )}
 

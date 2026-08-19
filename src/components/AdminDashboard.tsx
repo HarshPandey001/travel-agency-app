@@ -16,6 +16,7 @@ interface AdminDashboardProps {
   onUpdateTrip: (updatedTrip: Trip) => void;
   onDeleteTrip: (tripId: string) => void;
   onSendAnnouncement: (announcement: TripAnnouncement) => void;
+  onCancelBooking?: (bookingId: string, cancellationReason: string) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -27,9 +28,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onCreateTrip,
   onUpdateTrip,
   onDeleteTrip,
-  onSendAnnouncement
+  onSendAnnouncement,
+  onCancelBooking
 }) => {
-  const [activeTab, setActiveTab] = useState<'trips' | 'seat_mgmt' | 'roster' | 'announcements' | 'gemini_ai'>('trips');
+  const [activeTab, setActiveTab] = useState<'trips' | 'seat_mgmt' | 'roster' | 'cancelled_tickets' | 'announcements' | 'gemini_ai'>('trips');
+  const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
+  const [cancellationReasonInput, setCancellationReasonInput] = useState<string>('Traveler Cancellation Request / Refund Processed');
   const [isCreatingTrip, setIsCreatingTrip] = useState(false);
   const [isPresetLibraryOpen, setIsPresetLibraryOpen] = useState(false);
   const [selectedRegionFilter, setSelectedRegionFilter] = useState<string>('All');
@@ -570,7 +574,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>📋 Bookings List & Passenger Roster ({bookings.length})</span>
+            <span>📋 Bookings List ({bookings.filter(b => b.status !== 'CANCELLED').length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('cancelled_tickets')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+              activeTab === 'cancelled_tickets'
+                ? 'bg-rose-500 text-white font-bold shadow-md shadow-rose-500/20'
+                : 'bg-rose-950/40 text-rose-300 hover:bg-rose-900/50 border border-rose-500/30'
+            }`}
+          >
+            <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+            <span>🚨 Cancelled Tickets & Refunds ({bookings.filter(b => b.status === 'CANCELLED').length})</span>
           </button>
 
           <button
@@ -1043,12 +1059,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <th className="p-3">Emergency Contact</th>
                     <th className="p-3">Diet</th>
                     <th className="p-3">Paid / Total</th>
+                    <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
                   {tripBookings.map((b) => (
                     <tr key={b.id} className="hover:bg-slate-800/40">
-                      <td className="p-3 font-mono font-bold text-emerald-400">{b.id}</td>
+                      <td className="p-3 font-mono font-bold text-emerald-400">
+                        {b.id}
+                        {b.status === 'CANCELLED' && (
+                          <span className="block text-[9px] text-rose-400 uppercase font-bold">CANCELLED</span>
+                        )}
+                      </td>
                       <td className="p-3 font-bold text-white">#{b.seatNumbers.join(', #')}</td>
                       <td className="p-3 font-bold text-white">
                         {b.primaryTraveler.fullName} ({b.primaryTraveler.gender}, {b.primaryTraveler.age})
@@ -1082,6 +1104,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <div className="text-[10px] text-amber-400 font-normal">
                             Due: ₹{b.remainingBalanceDue.toLocaleString('en-IN')}
                           </div>
+                        )}
+                      </td>
+                      <td className="p-3 text-right">
+                        {b.status === 'CANCELLED' ? (
+                          <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-1 rounded-xl text-[10px] font-bold">
+                            CANCELLED
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setCancellingBooking(b)}
+                            className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:border-rose-500/50 px-2.5 py-1.5 rounded-xl font-bold text-[11px] transition-all flex items-center space-x-1 ml-auto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Cancel Ticket</span>
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -1181,6 +1219,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
+      {/* TAB 4: CANCELLED TICKETS & REFUNDS DESK */}
+      {activeTab === 'cancelled_tickets' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <span className="text-xs uppercase font-bold text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-full border border-rose-500/20">
+                Refunds & Cancellation Audit Log
+              </span>
+              <h3 className="text-xl font-bold font-display text-white mt-1">
+                🚨 Cancelled Passenger Bookings ({bookings.filter(b => b.status === 'CANCELLED').length})
+              </h3>
+              <p className="text-xs text-slate-400">All cancelled tickets, released bus seats, and refund details.</p>
+            </div>
+          </div>
+
+          {bookings.filter(b => b.status === 'CANCELLED').length === 0 ? (
+            <div className="bg-slate-950 p-12 rounded-2xl text-center text-xs text-slate-500 space-y-2">
+              <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto" />
+              <p className="font-bold text-slate-300">No Cancelled Tickets!</p>
+              <p>All passenger bookings are 100% active and confirmed across departures.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold tracking-wider">
+                  <tr>
+                    <th className="p-3">Booking ID</th>
+                    <th className="p-3">Trip Name</th>
+                    <th className="p-3">Primary Traveler</th>
+                    <th className="p-3">Contact Details</th>
+                    <th className="p-3">Seats Released</th>
+                    <th className="p-3">Paid Amount</th>
+                    <th className="p-3">Cancellation Reason</th>
+                    <th className="p-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {bookings.filter(b => b.status === 'CANCELLED').map((b) => (
+                    <tr key={b.id} className="hover:bg-slate-800/40">
+                      <td className="p-3 font-mono font-bold text-rose-400">{b.id}</td>
+                      <td className="p-3 font-bold text-white max-w-[160px] truncate">{b.tripTitle}</td>
+                      <td className="p-3 font-bold text-white">
+                        {b.primaryTraveler.fullName}
+                      </td>
+                      <td className="p-3 text-[11px]">
+                        <a href={`tel:${b.primaryTraveler.phone}`} className="text-cyan-400 font-bold hover:underline">
+                          📞 {b.primaryTraveler.phone}
+                        </a>
+                        <div className="text-[10px] text-slate-500">{b.primaryTraveler.email}</div>
+                      </td>
+                      <td className="p-3 font-bold text-emerald-400">
+                        #{b.seatNumbers.join(', #')} (Available on Bus Map)
+                      </td>
+                      <td className="p-3 font-bold text-white">
+                        ₹{b.totalAmountPaid.toLocaleString('en-IN')}
+                      </td>
+                      <td className="p-3 text-slate-300 text-[11px] max-w-[200px]">
+                        {b.cancellationReason || 'Cancelled by Admin Desk'}
+                      </td>
+                      <td className="p-3">
+                        <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-1 rounded-xl text-[10px] font-bold inline-block">
+                          CANCELLED & SEATS FREED
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* TAB 5: GOOGLE GEMINI AI COPILOT & PHOTO GENERATOR */}
       {activeTab === 'gemini_ai' && (
         <AdminGeminiAssistant
@@ -1189,6 +1300,73 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             setIsCreatingTrip(true);
           }}
         />
+      )}
+
+      {/* TICKET CANCELLATION CONFIRMATION MODAL */}
+      {cancellingBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 text-white relative">
+            <div className="flex items-center space-x-3 text-rose-400">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5 text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold font-display text-white">Cancel Passenger Ticket</h3>
+                <p className="text-xs text-slate-400">Booking ID: {cancellingBooking.id}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Traveler:</span>
+                <span className="font-bold text-white">{cancellingBooking.primaryTraveler.fullName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Seats:</span>
+                <span className="font-bold text-emerald-400">#{cancellingBooking.seatNumbers.join(', #')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Amount Paid:</span>
+                <span className="font-bold text-white">₹{cancellingBooking.totalAmountPaid.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Reason for Cancellation (Stored in Agency Records)
+              </label>
+              <textarea
+                rows={2}
+                value={cancellationReasonInput}
+                onChange={(e) => setCancellationReasonInput(e.target.value)}
+                placeholder="e.g. Traveler requested cancellation / Refund processed via UPI"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none"
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={() => setCancellingBooking(null)}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-colors"
+              >
+                Keep Ticket
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onCancelBooking) {
+                    onCancelBooking(cancellingBooking.id, cancellationReasonInput);
+                  }
+                  setCancellingBooking(null);
+                }}
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg shadow-rose-600/20 transition-all"
+              >
+                Confirm Ticket Cancellation ❌
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
