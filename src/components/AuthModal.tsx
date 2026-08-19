@@ -210,15 +210,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                   d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.26 2.7 1.29 6.61l3.99 3.15c.95-2.85 3.6-4.96 6.72-4.96z"
                 />
               </svg>
-              <span>{loading ? 'Connecting to Google OAuth...' : 'Continue with Google Account'}</span>
             </button>
-
-            <div className="mt-6 flex items-start space-x-2.5 bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 text-xs text-slate-400">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-              <p className="text-[11px] leading-relaxed">
-                WanderVibe is a verified travel agency. Log in securely using your Google account (<span className="text-emerald-400 font-bold">hapa1929@gmail.com</span> for owner control).
-              </p>
-            </div>
           </div>
         ) : (
           /* Phone Prompt Step */
