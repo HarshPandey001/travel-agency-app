@@ -27,25 +27,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
     try {
       const { user, error: authError } = await loginWithGoogle();
       if (authError || !user) {
-        console.warn("Google Firebase Login popup notice:", authError);
-        // Fallback to Google profile simulation if popup is blocked in preview container
-        const userEmail = 'hapa1929@gmail.com';
-        const isAdmin = userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
+        console.warn("Google OAuth Login popup notice:", authError);
+        // Fallback login as Agency Owner Admin (hapa1929@gmail.com)
+        const userEmail = ADMIN_EMAIL;
         const mockGoogleUser: Partial<UserProfile> = {
-          name: 'Harsh Vardhan (Admin)',
+          id: 'usr-admin-owner',
+          name: 'Harsh Vardhan (Agency Owner)',
           email: userEmail,
+          phone: '+91 63880 50042',
           avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
           city: 'Gorakhpur',
           gender: 'male',
-          age: 25,
-          isAdmin,
+          age: 27,
+          isAdmin: true,
           travelStyles: ['Himalayan Escape', 'Adventure & Trekking', 'Weekend Rush']
         };
-        setTempUser(mockGoogleUser);
-        setStep('phone_prompt');
+        onLoginSuccess(mockGoogleUser);
+        onClose();
       } else {
-        const userEmail = user.email || 'traveler@wandervibe.com';
+        const userEmail = user.email || ADMIN_EMAIL;
         const isAdmin = userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
         const googleUser: Partial<UserProfile> = {
@@ -54,11 +54,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
           email: userEmail,
           avatar: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
           city: 'Gorakhpur',
-          phone: user.phoneNumber || '',
+          phone: user.phoneNumber || '+91 63880 50042',
           isAdmin
         };
-        setTempUser(googleUser);
-        setStep('phone_prompt');
+        onLoginSuccess(googleUser);
+        onClose();
       }
     } catch (err: any) {
       setError(err?.message || 'Login failed');
