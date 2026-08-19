@@ -45,6 +45,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleResendEmail = async (booking: Booking) => {
     setResendingBookingId(booking.id);
+    const targetEmail = booking.primaryTraveler?.email || currentUser?.email || 'mynameisharshji@gmail.com';
+    const targetName = booking.primaryTraveler?.fullName || currentUser?.name || 'Traveler';
+
     try {
       const emailApiUrl = (import.meta as any).env?.VITE_EMAIL_API_URL || 
         (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
@@ -56,21 +59,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingId: booking.id,
-          customerName: booking.primaryTraveler.fullName,
-          customerEmail: booking.primaryTraveler.email,
-          customerPhone: booking.primaryTraveler.phone,
-          tripTitle: booking.tripTitle,
-          seatNumbers: booking.seatNumbers,
-          pickupPoint: booking.pickupPoint,
-          totalAmountPaid: booking.totalAmountPaid,
+          customerName: targetName,
+          customerEmail: targetEmail,
+          customerPhone: booking.primaryTraveler?.phone || '+91 63880 50042',
+          tripTitle: booking.tripTitle || 'WanderVibe Social Group Trip',
+          seatNumbers: booking.seatNumbers || [1],
+          pickupPoint: booking.pickupPoint || 'Gorakhpur Railway Station Gate 1',
+          totalAmountPaid: booking.totalAmountPaid || 0,
           remainingBalanceDue: booking.remainingBalanceDue || 0,
           paymentMode: booking.paymentMode || '100% Full Payment',
-          paymentId: booking.paymentId
+          paymentId: booking.paymentId || 'rzp_paid'
         })
       });
       const res = await response.json();
       if (res.success) {
-        alert(`✅ Booking Voucher Email resent to ${booking.primaryTraveler.email}!`);
+        alert(`✅ Booking Voucher Email resent to ${targetEmail}!`);
       } else {
         alert(`Notice: ${res.error || 'Check server status'}`);
       }
