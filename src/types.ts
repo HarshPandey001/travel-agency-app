@@ -178,6 +178,8 @@ export interface Booking {
   status: 'CONFIRMED' | 'ATTENDED' | 'CANCELLED';
   cancellationReason?: string;
   qrCodeValue?: string;
+  emailSentStatus?: boolean;
+  emailSentTime?: string;
 }
 
 export const ADMIN_EMAIL = 'hapa1929@gmail.com';

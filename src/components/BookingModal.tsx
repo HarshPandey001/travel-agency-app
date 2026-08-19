@@ -183,6 +183,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       paymentMethod: 'Razorpay Secure Gateway',
       paymentId: paymentId,
       status: 'CONFIRMED',
+      emailSentStatus: true,
+      emailSentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       primaryTraveler: {
         fullName,
         email,

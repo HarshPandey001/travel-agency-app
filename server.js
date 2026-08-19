@@ -104,11 +104,16 @@ app.post('/api/send-booking-email', async (req, res) => {
               <span class="highlight">₹${Number(totalAmountPaid).toLocaleString('en-IN')}</span>
             </div>
             ${remainingBalanceDue && Number(remainingBalanceDue) > 0 ? `
-            <div class="detail-row">
-              <span class="label">Remaining Balance Due at Hub:</span>
-              <span class="due">₹${Number(remainingBalanceDue).toLocaleString('en-IN')}</span>
+            <div style="background: rgba(245, 158, 11, 0.15); border: 2px dashed #f59e0b; padding: 16px; border-radius: 14px; margin: 20px 0; text-align: center;">
+              <div style="color: #fbbf24; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">⚠️ REMAINING DUE BALANCE AT BOARDING HUB</div>
+              <div style="font-size: 28px; font-weight: 900; color: #ffffff; margin: 4px 0;">₹${Number(remainingBalanceDue).toLocaleString('en-IN')}</div>
+              <div style="color: #cbd5e1; font-size: 12px;">Please pay this remaining 60% balance via Cash or UPI at ${pickupPoint} prior to boarding.</div>
             </div>
-            ` : ''}
+            ` : `
+            <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; padding: 12px; border-radius: 12px; margin: 20px 0; text-align: center; color: #34d399; font-weight: bold; font-size: 13px;">
+              ✓ 100% FULL PAYMENT COMPLETED — NO DUE BALANCE AT HUB!
+            </div>
+            `}
             <div class="detail-row">
               <span class="label">Razorpay Payment ID:</span>
               <span class="value">${paymentId || 'rzp_paid'}</span>
