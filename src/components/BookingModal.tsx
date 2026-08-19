@@ -217,7 +217,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
     // Automatically Dispatch SMTP Confirmation Email via Backend Server
     try {
-      const emailApiUrl = (import.meta as any).env?.VITE_EMAIL_API_URL || '/api/send-booking-email';
+      const emailApiUrl = (import.meta as any).env?.VITE_EMAIL_API_URL || 
+        (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+          ? 'http://localhost:5000/api/send-booking-email' 
+          : '/api/send-booking-email');
       fetch(emailApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
