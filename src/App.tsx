@@ -211,11 +211,16 @@ export default function App() {
     };
 
     setCurrentUser(updatedUser);
+    if (isAdmin) {
+      setActiveTab('admin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleLogout = () => {
     logoutFirebase();
     setCurrentUser(null);
+    setActiveTab('home');
   };
 
   // User missing phone indicator
