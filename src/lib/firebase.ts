@@ -3,6 +3,8 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut, 
@@ -31,11 +33,38 @@ googleProvider.setCustomParameters({
 
 export const loginWithGoogle = async () => {
   try {
+    // Try popup first (works on desktop browsers without popup blockers)
     const result = await signInWithPopup(auth, googleProvider);
     return { user: result.user, error: null };
   } catch (err: any) {
-    console.warn("Firebase Auth popup error or fallback needed:", err);
+    // If popup was blocked or closed, fall back to redirect-based login
+    if (
+      err?.code === 'auth/popup-closed-by-user' ||
+      err?.code === 'auth/popup-blocked' ||
+      err?.code === 'auth/cancelled-popup-request'
+    ) {
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        // Page will redirect — this return won't be reached
+        return { user: null, error: null };
+      } catch (redirectErr: any) {
+        return { user: null, error: redirectErr?.message || 'Google redirect login failed' };
+      }
+    }
     return { user: null, error: err?.message || 'Google Auth Error' };
+  }
+};
+
+// Check for redirect result on page load
+export const checkRedirectResult = async () => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result?.user) {
+      return { user: result.user, error: null };
+    }
+    return { user: null, error: null };
+  } catch (err: any) {
+    return { user: null, error: err?.message || 'Redirect check failed' };
   }
 };
 

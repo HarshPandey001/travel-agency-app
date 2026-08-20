@@ -182,7 +182,7 @@ export interface Booking {
   emailSentTime?: string;
 }
 
-export const ADMIN_EMAIL = 'mynameisharshji@gmail.com';
+export const ADMIN_EMAIL = 'hapa1929@gmail.com';
 
 export interface UserProfile {
   id: string;

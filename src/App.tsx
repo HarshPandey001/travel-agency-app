@@ -13,7 +13,7 @@ import { Footer } from './components/Footer';
 import { WanderCoinsModal } from './components/WanderCoinsModal';
 import { CaptainHotlineModal } from './components/CaptainHotlineModal';
 import { LegalPolicies } from './components/LegalPolicies';
-import { onAuthStateChanged, auth, logoutFirebase } from './lib/firebase';
+import { onAuthStateChanged, auth, logoutFirebase, checkRedirectResult } from './lib/firebase';
 import { ShieldCheck, Megaphone, Bell, Sparkles, Phone, CheckCircle, ArrowRight } from 'lucide-react';
 
 export default function App() {
@@ -69,28 +69,25 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Firebase auth state observer — only sync logout, never auto-create sessions
+  // Handle Google redirect result on page load (when popup falls back to redirect)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      // If Firebase user signed out, clear local session too
-      if (!firebaseUser && currentUser) {
-        // User signed out from Firebase — keep local session unless explicitly logged out
+    checkRedirectResult().then(({ user }) => {
+      if (user && !currentUser) {
+        const userEmail = user.email || '';
+        const isAdmin = userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+        handleLoginSuccess({
+          id: user.uid,
+          name: user.displayName || userEmail.split('@')[0] || 'Traveler',
+          email: userEmail,
+          avatar: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+          phone: user.phoneNumber || '',
+          isAdmin
+        });
       }
-      // Do NOT auto-create sessions here — login is handled only via AuthModal
     });
-    return () => unsubscribe();
   }, []);
 
-  // Warm up Render Backend SMTP Server on Mount & Ping every 4 minutes (Prevents Render Sleep Mode)
-  useEffect(() => {
-    const pingBackend = () => {
-      fetch('https://wandervibe-email-service.onrender.com/health')
-        .catch(() => {});
-    };
-    pingBackend();
-    const interval = setInterval(pingBackend, 4 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+
 
   // Handlers
   const handleSelectTrip = (trip: Trip) => {
