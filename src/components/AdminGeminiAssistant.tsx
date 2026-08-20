@@ -18,7 +18,7 @@ export const AdminGeminiAssistant: React.FC<AdminGeminiAssistantProps> = ({
   onApplyImageToTrip,
   onApplyTitleAndTagline
 }) => {
-  const [apiKey, setApiKey] = useState('AIzaSyDCuH_SQyik-JqPxyGgJ0wBFjUU0WH5ILg');
+  const [apiKey, setApiKey] = useState((import.meta as any).env?.VITE_GEMINI_API_KEY || '');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [inputMsg, setInputMsg] = useState('');
   const [loading, setLoading] = useState(false);

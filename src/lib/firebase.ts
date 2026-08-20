@@ -11,13 +11,13 @@ import {
 } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDKe_i82Pm16lW0cSCTHPXjKIYgZvIO5Yw",
-  authDomain: "travel-with-harsh.firebaseapp.com",
-  projectId: "travel-with-harsh",
-  storageBucket: "travel-with-harsh.firebasestorage.app",
-  messagingSenderId: "11621957141",
-  appId: "1:11621957141:web:6e640d1a03437bbcf1d81c",
-  measurementId: "G-5XXMW7BGK3"
+  apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || "",
+  authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || "travel-with-harsh.firebaseapp.com",
+  projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID || "travel-with-harsh",
+  storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET || "travel-with-harsh.firebasestorage.app",
+  messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "11621957141",
+  appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID || "1:11621957141:web:6e640d1a03437bbcf1d81c",
+  measurementId: (import.meta as any).env?.VITE_FIREBASE_MEASUREMENT_ID || "G-5XXMW7BGK3"
 };
 
 // Initialize Firebase safely
