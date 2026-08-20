@@ -17,19 +17,8 @@
 - **👫 1:1 Dynamic Gender Ratio Maps**: Real-time seat map showing male/female co-passengers for safe, balanced group vibes.
 - **✨ Google Gemini AI Admin Copilot**: Auto-generate custom trip itineraries, HD cover photos, and taglines in 1 click.
 - **📧 Node.js SMTP Email Dispatcher (`server.js`)**: Instant PDF-style digital boarding pass emailed upon successful payment.
-- **🛡️ Locked Owner Access**: Client-hidden Agency Admin Control Panel protected for authorized owner email (`mynameisharshji@gmail.com`).
+- **🛡️ Locked Owner Access**: Client-hidden Agency Admin Control Panel protected for authorized owner authentication.
 - **🪙 WanderCoins & Referral Program**: Give ₹500 instant fare discount, earn 🪙 500 WanderCoins upon completed trip payment.
-
----
-
-## 🏢 Registered Agency & Owner Details
-
-| Attribute | Details |
-| :--- | :--- |
-| **Lead Owner & Founder** | **Harsh Pandey** |
-| **Registered HQ Address** | `Sector 5, C-133, GIDA, Gorakhpur, UP - 273209` |
-| **24/7 Emergency Helpline** | **`+91 63880 50042`** |
-| **Official Email** | **`mynameisharshji@gmail.com`** |
 
 ---
 
@@ -38,7 +27,7 @@
 - **Frontend**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Icons & Animation**: Lucide React + Motion
 - **Backend / SMTP**: Node.js + Express + Nodemailer (`server.js`)
-- **Authentication**: Firebase Auth (Google OAuth, Email/Password, Phone SMS)
+- **Authentication**: Firebase Auth (Google OAuth 1-Click)
 - **Payment Gateway**: Razorpay Secure Checkout
 
 ---
@@ -47,8 +36,8 @@
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/harshygs-blip/wandervibe.git
-cd wandervibe
+git clone https://github.com/HarshPandey001/travel-agency-app.git
+cd travel-agency-app
 
 # 2. Install dependencies
 npm install
@@ -65,12 +54,12 @@ node server.js
 ## 🌐 Deploy to Render.com
 
 1. Create a **Web Service** on [Render.com](https://render.com).
-2. Connect `harshygs-blip/wandervibe` repository.
+2. Connect `travel-agency-app` repository.
 3. Set **Build Command**: `npm install` and **Start Command**: `node server.js`.
 4. Add Environment Variables:
    - `SMTP_HOST`: `smtp.gmail.com`
    - `SMTP_PORT`: `465`
-   - `SMTP_USER`: `mynameisharshji@gmail.com`
+   - `SMTP_USER`: *(Your SMTP Email)*
    - `SMTP_PASS`: *(Your Gmail 16-character App Password)*
 
 ---
