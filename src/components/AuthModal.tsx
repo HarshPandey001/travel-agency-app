@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Sparkles, AlertCircle } from 'lucide-react';
-import { loginWithGoogle } from '../lib/firebase';
+import { loginWithGoogle, extractGoogleUserData } from '../lib/firebase';
 import { UserProfile, isUserAdmin } from '../types';
 
 interface AuthModalProps {
@@ -26,18 +26,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
         return;
       }
 
-      const userEmail = (user.email || '').toLowerCase();
-      const isAdmin = isUserAdmin(userEmail);
+      const data = extractGoogleUserData(user);
+      const isAdmin = isUserAdmin(data.email);
 
       const googleUser: Partial<UserProfile> = {
-        id: user.uid,
-        name: user.displayName || userEmail.split('@')[0] || (isAdmin ? 'Harsh Vardhan (Admin)' : 'Traveler'),
-        email: userEmail,
-        avatar: user.photoURL || (isAdmin
+        id: data.id,
+        name: data.name || (isAdmin ? 'Harsh Vardhan (Admin)' : 'Traveler'),
+        email: data.email,
+        avatar: data.avatar || (isAdmin
           ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'
           : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'),
         city: 'Gorakhpur',
-        phone: user.phoneNumber || '',
+        phone: data.phone,
         isAdmin
       };
 

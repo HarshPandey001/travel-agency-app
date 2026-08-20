@@ -5,8 +5,6 @@ import {
   signInWithPopup, 
   signInWithRedirect,
   getRedirectResult,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
   User as FirebaseUser 
@@ -27,17 +25,35 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
+// Request explicit email, profile & openid scopes
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
+googleProvider.addScope('openid');
+
 googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
+// Helper to extract full Google user info accurately
+export const extractGoogleUserData = (user: FirebaseUser) => {
+  const email = (user.email || user.providerData?.[0]?.email || '').toLowerCase().trim();
+  const name = user.displayName || user.providerData?.[0]?.displayName || (email ? email.split('@')[0] : 'Traveler');
+  const avatar = user.photoURL || user.providerData?.[0]?.photoURL || '';
+  const phone = user.phoneNumber || user.providerData?.[0]?.phoneNumber || '';
+  return {
+    id: user.uid,
+    name,
+    email,
+    avatar,
+    phone
+  };
+};
+
 export const loginWithGoogle = async () => {
   try {
-    // Try popup first (works on desktop browsers without popup blockers)
     const result = await signInWithPopup(auth, googleProvider);
     return { user: result.user, error: null };
   } catch (err: any) {
-    // If popup was blocked or closed, fall back to redirect-based login
     if (
       err?.code === 'auth/popup-closed-by-user' ||
       err?.code === 'auth/popup-blocked' ||
@@ -45,10 +61,9 @@ export const loginWithGoogle = async () => {
     ) {
       try {
         await signInWithRedirect(auth, googleProvider);
-        // Page will redirect — this return won't be reached
         return { user: null, error: null };
       } catch (redirectErr: any) {
-        return { user: null, error: redirectErr?.message || 'Google redirect login failed' };
+        return { user: null, error: redirectErr?.message || 'Google redirect failed' };
       }
     }
     return { user: null, error: err?.message || 'Google Auth Error' };
@@ -65,23 +80,6 @@ export const checkRedirectResult = async () => {
     return { user: null, error: null };
   } catch (err: any) {
     return { user: null, error: err?.message || 'Redirect check failed' };
-  }
-};
-
-export const loginWithEmail = async (email: string, pass: string) => {
-  try {
-    const result = await signInWithEmailAndPassword(auth, email, pass);
-    return { user: result.user, error: null };
-  } catch (err: any) {
-    if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
-      try {
-        const newResult = await createUserWithEmailAndPassword(auth, email, pass);
-        return { user: newResult.user, error: null };
-      } catch (createErr: any) {
-        return { user: null, error: createErr?.message || 'Authentication error' };
-      }
-    }
-    return { user: null, error: err?.message || 'Email Auth Error' };
   }
 };
 

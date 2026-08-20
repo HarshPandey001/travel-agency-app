@@ -13,7 +13,7 @@ import { Footer } from './components/Footer';
 import { WanderCoinsModal } from './components/WanderCoinsModal';
 import { CaptainHotlineModal } from './components/CaptainHotlineModal';
 import { LegalPolicies } from './components/LegalPolicies';
-import { onAuthStateChanged, auth, logoutFirebase, checkRedirectResult } from './lib/firebase';
+import { onAuthStateChanged, auth, logoutFirebase, checkRedirectResult, extractGoogleUserData } from './lib/firebase';
 import { ShieldCheck, Megaphone, Bell, Sparkles, Phone, CheckCircle, ArrowRight } from 'lucide-react';
 
 export default function App() {
@@ -73,17 +73,17 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        const userEmail = (firebaseUser.email || '').toLowerCase();
-        const isAdmin = isUserAdmin(userEmail);
+        const data = extractGoogleUserData(firebaseUser);
+        const isAdmin = isUserAdmin(data.email);
         
         handleLoginSuccess({
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || (isAdmin ? 'Harsh Vardhan (Admin)' : userEmail.split('@')[0] || 'Traveler'),
-          email: userEmail,
-          avatar: firebaseUser.photoURL || (isAdmin
+          id: data.id,
+          name: data.name || (isAdmin ? 'Harsh Vardhan (Admin)' : 'Traveler'),
+          email: data.email,
+          avatar: data.avatar || (isAdmin
             ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'
             : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'),
-          phone: firebaseUser.phoneNumber || '',
+          phone: data.phone,
           isAdmin
         });
       }
@@ -92,16 +92,16 @@ export default function App() {
     // Also check redirect result if page redirected
     checkRedirectResult().then(({ user }) => {
       if (user) {
-        const userEmail = (user.email || '').toLowerCase();
-        const isAdmin = isUserAdmin(userEmail);
+        const data = extractGoogleUserData(user);
+        const isAdmin = isUserAdmin(data.email);
         handleLoginSuccess({
-          id: user.uid,
-          name: user.displayName || (isAdmin ? 'Harsh Vardhan (Admin)' : userEmail.split('@')[0] || 'Traveler'),
-          email: userEmail,
-          avatar: user.photoURL || (isAdmin
+          id: data.id,
+          name: data.name || (isAdmin ? 'Harsh Vardhan (Admin)' : 'Traveler'),
+          email: data.email,
+          avatar: data.avatar || (isAdmin
             ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'
             : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'),
-          phone: user.phoneNumber || '',
+          phone: data.phone,
           isAdmin
         });
       }
@@ -175,13 +175,12 @@ export default function App() {
     const targetBooking = bookings.find(b => b.id === bookingId);
     if (!targetBooking) return;
 
-    // Update booking status to CANCELLED
+    // Mark booking as cancelled in state
     setBookings(prev => prev.map(b => {
       if (b.id === bookingId) {
         return {
           ...b,
-          status: 'CANCELLED',
-          paymentStatus: 'CANCELLED',
+          status: 'cancelled' as const,
           cancellationReason
         };
       }
@@ -211,7 +210,7 @@ export default function App() {
   };
 
   const handleLoginSuccess = (userPartial: Partial<UserProfile>) => {
-    const userEmail = userPartial.email || currentUser?.email || 'traveler@gmail.com';
+    const userEmail = (userPartial.email || currentUser?.email || '').trim();
     const isAdmin = userPartial.isAdmin !== undefined
       ? userPartial.isAdmin
       : isUserAdmin(userEmail);
