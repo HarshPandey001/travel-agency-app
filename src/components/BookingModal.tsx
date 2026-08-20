@@ -115,6 +115,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=200&q=80",
       handler: function (response: any) {
         const finalPaymentId = response.razorpay_payment_id || paymentId;
+        console.log('[STAGE 1: RAZORPAY PAYMENT RECEIVED]', {
+          razorpay_payment_id: response.razorpay_payment_id,
+          finalPaymentId,
+          amount: payableAmountNow
+        });
         setRazorpayPaymentId(finalPaymentId);
         finalizeBooking(finalPaymentId);
       },
@@ -142,7 +147,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         rzp.open();
         setIsProcessingRazorpay(false);
       } catch (err) {
-        console.warn("Fallback to Instant Razorpay Order Verification:", err);
+        console.warn("[PAYMENT GATEWAY FALLBACK]", err);
         setTimeout(() => {
           setRazorpayPaymentId(paymentId);
           finalizeBooking(paymentId);
@@ -156,7 +161,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   };
 
-  const finalizeBooking = (paymentId: string) => {
+  const finalizeBooking = async (paymentId: string) => {
+    console.log(`[STAGE 2: PAYMENT VERIFICATION SUCCESSFUL] Payment ID: ${paymentId}`);
+    console.log(`[STAGE 3: CUSTOMER EMAIL FOUND] Customer: ${fullName} <${email}>`);
+
     const bookingId = `WV-RZP-${Date.now().toString().slice(-6)}`;
 
     const newBooking: Booking = {
@@ -183,8 +191,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       paymentMethod: 'Razorpay Secure Gateway',
       paymentId: paymentId,
       status: 'CONFIRMED',
-      emailSentStatus: true,
-      emailSentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      emailSentStatus: false, // Initially false until verified backend response
+      emailSentTime: undefined,
       primaryTraveler: {
         fullName,
         email,
@@ -216,14 +224,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     onCompleteBooking(newBooking, updatedSeats);
     setCompletedBooking(newBooking);
     setIsProcessingRazorpay(false);
+    setStep('confirmation');
 
-    // Automatically Dispatch SMTP Confirmation Email via Backend Server
+    // STAGE 4: Trigger SMTP Confirmation Email via Backend Server
     try {
+      console.log(`[STAGE 4: EMAIL FUNCTION CALLED] Dispatching to backend for ${email}...`);
       const emailApiUrl = (import.meta as any).env?.VITE_EMAIL_API_URL || 
         (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
           ? 'http://localhost:5000/api/send-booking-email' 
           : 'https://wandervibe-email-service.onrender.com/api/send-booking-email');
-      fetch(emailApiUrl, {
+
+      const response = await fetch(emailApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -239,11 +250,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           paymentMode: paymentOption === '40_ADVANCE' ? '40% Advance Lock' : '100% Full Payment',
           paymentId
         })
-      }).catch(err => console.warn("Email dispatch notice:", err));
-    } catch (e) {
-      console.warn("SMTP email trigger notice:", e);
+      });
+
+      const resData = await response.json();
+      if (response.ok && resData.success) {
+        console.log(`[STAGE 5: SMTP SEND SUCCESSFUL] Email confirmed by backend for ${email}`, resData);
+        const updatedBookingWithEmail: Booking = {
+          ...newBooking,
+          emailSentStatus: true,
+          emailSentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setCompletedBooking(updatedBookingWithEmail);
+        onCompleteBooking(updatedBookingWithEmail, updatedSeats);
+      } else {
+        console.error(`[STAGE 6: SMTP SEND FAILED] Backend rejected email:`, resData?.error || resData?.details || 'Unknown error');
+      }
+    } catch (e: any) {
+      console.error(`[STAGE 6: SMTP SEND FAILED] Network/Server Error:`, e?.message || e);
     }
-    setStep('confirmation');
   };
 
   return (

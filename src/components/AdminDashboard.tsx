@@ -68,7 +68,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           totalAmountPaid: booking.totalAmountPaid || 0,
           remainingBalanceDue: booking.remainingBalanceDue || 0,
           paymentMode: booking.paymentMode || '100% Full Payment',
-          paymentId: booking.paymentId || 'rzp_paid'
+          paymentId: booking.paymentId || 'rzp_paid',
+          isManualResend: true
         })
       });
       const res = await response.json();
