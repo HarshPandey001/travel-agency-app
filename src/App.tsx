@@ -69,22 +69,45 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Handle Google redirect result on page load (when popup falls back to redirect)
+  // Firebase Auth State Observer: Handles Google Signup/Login
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const userEmail = (firebaseUser.email || '').toLowerCase();
+        const isAdmin = userEmail === ADMIN_EMAIL.toLowerCase();
+        
+        handleLoginSuccess({
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || (isAdmin ? 'Harsh Vardhan (Admin)' : userEmail.split('@')[0] || 'Traveler'),
+          email: userEmail,
+          avatar: firebaseUser.photoURL || (isAdmin
+            ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'
+            : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'),
+          phone: firebaseUser.phoneNumber || '',
+          isAdmin
+        });
+      }
+    });
+
+    // Also check redirect result if page redirected
     checkRedirectResult().then(({ user }) => {
-      if (user && !currentUser) {
-        const userEmail = user.email || '';
-        const isAdmin = userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      if (user) {
+        const userEmail = (user.email || '').toLowerCase();
+        const isAdmin = userEmail === ADMIN_EMAIL.toLowerCase();
         handleLoginSuccess({
           id: user.uid,
-          name: user.displayName || userEmail.split('@')[0] || 'Traveler',
+          name: user.displayName || (isAdmin ? 'Harsh Vardhan (Admin)' : userEmail.split('@')[0] || 'Traveler'),
           email: userEmail,
-          avatar: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+          avatar: user.photoURL || (isAdmin
+            ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'
+            : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'),
           phone: user.phoneNumber || '',
           isAdmin
         });
       }
     });
+
+    return () => unsubscribe();
   }, []);
 
 
