@@ -69,30 +69,14 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Firebase auth state observer
+  // Firebase auth state observer — only sync logout, never auto-create sessions
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser && !currentUser) {
-        const email = firebaseUser.email || 'traveler@wandervibe.com';
-        const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
-        setCurrentUser({
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || 'Traveler',
-          email,
-          phone: firebaseUser.phoneNumber || '',
-          avatar: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-          age: 25,
-          gender: 'male',
-          city: 'Gorakhpur',
-          bio: 'Love exploring new places and meeting co-travelers.',
-          travelStyles: ['Himalayan Escape', 'Adventure & Trekking'],
-          travelInterests: ['Trekking', 'Bonfire', 'Photography'],
-          badges: [{ title: 'Social Nomad', icon: 'Sparkles', description: 'Joined group travel family' }],
-          joinedDate: new Date().toISOString().split('T')[0],
-          isAdmin
-        });
+      // If Firebase user signed out, clear local session too
+      if (!firebaseUser && currentUser) {
+        // User signed out from Firebase — keep local session unless explicitly logged out
       }
+      // Do NOT auto-create sessions here — login is handled only via AuthModal
     });
     return () => unsubscribe();
   }, []);
