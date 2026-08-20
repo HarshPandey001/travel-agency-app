@@ -57,6 +57,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     };
   }, []);
 
+  // Autofill if user logs in
+  useEffect(() => {
+    if (currentUser) {
+      if (!fullName) setFullName(currentUser.name || '');
+      if (!email) setEmail(currentUser.email || '');
+      if (!phone) setPhone(currentUser.phone || '');
+      if (!city) setCity(currentUser.city || 'Gorakhpur');
+    }
+  }, [currentUser]);
+
   if (!isOpen) return null;
 
   const [referralCodeInput, setReferralCodeInput] = useState('');
@@ -326,16 +336,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                 <button
                   disabled={selectedSeatNumbers.length === 0}
-                  onClick={() => {
-                    if (!currentUser) {
-                      onOpenAuthModal();
-                      return;
-                    }
-                    setStep('details');
-                  }}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3 rounded-2xl text-xs shadow-xl shadow-emerald-500/20 transition-all hover:scale-105 disabled:opacity-50"
+                  onClick={() => setStep('details')}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3 rounded-2xl text-xs shadow-xl shadow-emerald-500/20 transition-all hover:scale-105 disabled:opacity-50 cursor-pointer"
                 >
-                  {currentUser ? 'Continue to Traveler Details →' : 'Sign In & Continue →'}
+                  Continue to Traveler Details →
                 </button>
               </div>
             </div>
