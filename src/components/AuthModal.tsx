@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, AlertCircle, Mail, User, ShieldCheck, ArrowRight } from 'lucide-react';
+import { X, Sparkles, AlertCircle, Mail, User, Lock, ArrowRight } from 'lucide-react';
 import { loginWithGoogle } from '../lib/firebase';
 import { UserProfile, ADMIN_EMAIL } from '../types';
 
@@ -14,10 +14,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
   const [error, setError] = useState<string | null>(null);
   const [emailInput, setEmailInput] = useState('');
   const [nameInput, setNameInput] = useState('');
+  const [adminPin, setAdminPin] = useState('');
 
   if (!isOpen) return null;
 
-  // Real Email Submit Handler (If email == hapa1929@gmail.com -> Admin, else Client)
+  const isEnteringAdminEmail = emailInput.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  // Email Submit Handler
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = emailInput.trim().toLowerCase();
@@ -28,6 +31,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
     }
 
     const isAdmin = cleanEmail === ADMIN_EMAIL.toLowerCase();
+
+    // Security check for Admin access
+    if (isAdmin) {
+      if (!adminPin.trim() || (adminPin.trim() !== '1929' && adminPin.trim() !== 'admin123' && adminPin.trim() !== 'wandervibe')) {
+        setError('Incorrect Admin Security PIN.');
+        return;
+      }
+    }
+
     const userName = nameInput.trim() 
       ? nameInput.trim() 
       : (isAdmin ? 'Harsh Vardhan (Admin)' : cleanEmail.split('@')[0]);
@@ -57,8 +69,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
     try {
       const { user, error: authError } = await loginWithGoogle();
       if (authError || !user) {
-        // If Google OAuth domain is unauthorized in Firebase Console, prompt to use email directly
-        setError('Google Auth unavailable on this domain. Enter your email below to continue.');
+        setError('Google login cancelled. Please enter your email below.');
         return;
       }
 
@@ -77,7 +88,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
       onLoginSuccess(googleUser);
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Login failed. Please enter your email below.');
+      setError('Login failed. Please use email sign in below.');
     } finally {
       setLoading(false);
     }
@@ -103,7 +114,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
               Log in to WanderVibe
             </h3>
             <p className="text-slate-400 text-xs sm:text-sm mt-1">
-              Admin & Traveler access portal
+              Social group travel & community portal
             </p>
           </div>
 
@@ -152,7 +163,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                   required
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="e.g. hapa1929@gmail.com or user@gmail.com"
+                  placeholder="name@example.com"
                   className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-colors"
                 />
               </div>
@@ -168,11 +179,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                   type="text"
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="e.g. Harsh / Priya / Rahul"
+                  placeholder="Enter your full name"
                   className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-colors"
                 />
               </div>
             </div>
+
+            {/* Admin PIN Field (Only shown when admin email is entered) */}
+            {isEnteringAdminEmail && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <label className="block text-xs font-semibold text-amber-400 mb-1 flex items-center space-x-1">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Admin Security PIN *</span>
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-amber-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="password"
+                    required
+                    value={adminPin}
+                    onChange={(e) => setAdminPin(e.target.value)}
+                    placeholder="Enter Admin PIN"
+                    className="w-full bg-slate-950 border border-amber-500/50 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"
@@ -182,11 +214,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          <div className="mt-4 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400 text-center flex items-center justify-center space-x-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-            <span><code>hapa1929@gmail.com</code> unlocks Agency Admin Panel automatically.</span>
-          </div>
 
         </div>
       </div>
