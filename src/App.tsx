@@ -39,7 +39,18 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('wv_user');
-    return saved ? JSON.parse(saved) : null;
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      if (!parsed.email || parsed.email === 'traveler@gmail.com' || parsed.email === 'aarav.sharma@gmail.com') {
+        localStorage.removeItem('wv_user');
+        return null;
+      }
+      return parsed;
+    } catch {
+      localStorage.removeItem('wv_user');
+      return null;
+    }
   });
 
   // Modal States
@@ -210,29 +221,36 @@ export default function App() {
   };
 
   const handleLoginSuccess = (userPartial: Partial<UserProfile>) => {
-    const userEmail = (userPartial.email || currentUser?.email || '').trim();
+    const userEmail = (userPartial.email || '').trim().toLowerCase();
+    if (!userEmail) return;
+
     const isAdmin = userPartial.isAdmin !== undefined
       ? userPartial.isAdmin
       : isUserAdmin(userEmail);
 
+    const userName = userPartial.name || userEmail.split('@')[0] || (isAdmin ? 'Harsh Vardhan (Admin)' : 'Traveler');
+
     const updatedUser: UserProfile = {
-      id: userPartial.id || currentUser?.id || `usr-${Date.now()}`,
-      name: userPartial.name || currentUser?.name || 'Traveler',
+      id: userPartial.id || `usr-${Date.now()}`,
+      name: userName,
       email: userEmail,
-      phone: userPartial.phone !== undefined ? userPartial.phone : (currentUser?.phone || ''),
-      avatar: userPartial.avatar || currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-      age: userPartial.age || currentUser?.age || 25,
-      gender: userPartial.gender || currentUser?.gender || 'male',
-      city: userPartial.city || currentUser?.city || 'Gorakhpur',
-      bio: userPartial.bio || currentUser?.bio || 'Curated travel enthusiast.',
-      travelStyles: userPartial.travelStyles || currentUser?.travelStyles || ['Himalayan Escape'],
-      travelInterests: userPartial.travelInterests || currentUser?.travelInterests || ['Mountain Trips'],
-      badges: currentUser?.badges || [{ title: 'Social Explorer', icon: 'Sparkles', description: 'Joined group travel' }],
-      joinedDate: currentUser?.joinedDate || new Date().toISOString().split('T')[0],
+      phone: userPartial.phone || '',
+      avatar: userPartial.avatar || (isAdmin
+        ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'
+        : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'),
+      age: userPartial.age || 25,
+      gender: userPartial.gender || 'male',
+      city: userPartial.city || 'Gorakhpur',
+      bio: userPartial.bio || 'Curated travel enthusiast.',
+      travelStyles: userPartial.travelStyles || ['Himalayan Escape', 'Adventure & Trekking'],
+      travelInterests: userPartial.travelInterests || ['Mountain Trips', 'Trekking'],
+      badges: userPartial.badges || [{ title: 'Social Explorer', icon: 'Sparkles', description: 'Joined group travel' }],
+      joinedDate: userPartial.joinedDate || new Date().toISOString().split('T')[0],
       isAdmin
     };
 
     setCurrentUser(updatedUser);
+    localStorage.setItem('wv_user', JSON.stringify(updatedUser));
     if (isAdmin) {
       setActiveTab('admin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
