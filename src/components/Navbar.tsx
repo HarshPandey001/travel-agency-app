@@ -1,6 +1,6 @@
 import React from 'react';
 import { Compass, User, ShieldCheck, LayoutDashboard, Sparkles, Phone, LogOut, Ticket, Coins } from 'lucide-react';
-import { UserProfile, ADMIN_EMAIL } from '../types';
+import { UserProfile, isUserAdmin } from '../types';
 
 interface NavbarProps {
   activeTab: 'home' | 'explore' | 'safety' | 'legal' | 'admin' | 'profile' | 'my-bookings';
@@ -27,7 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const isAuthorizedAdmin = currentUser && (
     currentUser.isAdmin ||
-    currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+    isUserAdmin(currentUser.email)
   );
 
   return (

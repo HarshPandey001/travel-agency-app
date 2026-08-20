@@ -182,7 +182,13 @@ export interface Booking {
   emailSentTime?: string;
 }
 
+export const ADMIN_EMAILS = ['hapa1929@gmail.com', 'mynameisharshji@gmail.com'];
 export const ADMIN_EMAIL = 'hapa1929@gmail.com';
+export const isUserAdmin = (email?: string | null): boolean => {
+  if (!email) return false;
+  const clean = email.toLowerCase().trim();
+  return ADMIN_EMAILS.some(adminEmail => adminEmail.toLowerCase() === clean);
+};
 
 export interface UserProfile {
   id: string;

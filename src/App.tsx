@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trip, Booking, UserProfile, SeatInfo, TripAnnouncement, ADMIN_EMAIL } from './types';
+import { Trip, Booking, UserProfile, SeatInfo, TripAnnouncement, ADMIN_EMAIL, isUserAdmin } from './types';
 import { INITIAL_TRIPS, INITIAL_USER, INITIAL_BOOKINGS, INITIAL_ANNOUNCEMENTS } from './data/initialData';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './components/LandingPage';
@@ -74,7 +74,7 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         const userEmail = (firebaseUser.email || '').toLowerCase();
-        const isAdmin = userEmail === ADMIN_EMAIL.toLowerCase();
+        const isAdmin = isUserAdmin(userEmail);
         
         handleLoginSuccess({
           id: firebaseUser.uid,
@@ -93,7 +93,7 @@ export default function App() {
     checkRedirectResult().then(({ user }) => {
       if (user) {
         const userEmail = (user.email || '').toLowerCase();
-        const isAdmin = userEmail === ADMIN_EMAIL.toLowerCase();
+        const isAdmin = isUserAdmin(userEmail);
         handleLoginSuccess({
           id: user.uid,
           name: user.displayName || (isAdmin ? 'Harsh Vardhan (Admin)' : userEmail.split('@')[0] || 'Traveler'),
@@ -214,7 +214,7 @@ export default function App() {
     const userEmail = userPartial.email || currentUser?.email || 'traveler@gmail.com';
     const isAdmin = userPartial.isAdmin !== undefined
       ? userPartial.isAdmin
-      : userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      : isUserAdmin(userEmail);
 
     const updatedUser: UserProfile = {
       id: userPartial.id || currentUser?.id || `usr-${Date.now()}`,
