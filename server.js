@@ -20,14 +20,11 @@ app.options('*', cors());
 app.use(express.json());
 
 // Configure Nodemailer Transporter
-const smtpPort = Number(process.env.SMTP_PORT) || 465;
 const rawUser = process.env.SMTP_USER || 'mynameisharshji@gmail.com';
 const rawPass = process.env.SMTP_PASS || 'qfhkqzhcwkhddjzf';
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: smtpPort,
-  secure: smtpPort === 465,
+  service: 'gmail',
   auth: {
     user: rawUser.trim(),
     pass: rawPass.replace(/\s+/g, '')
