@@ -12,7 +12,10 @@ import {
   Clock,
   User,
   Mail,
-  Phone
+  Phone,
+  Repeat,
+  Sparkles,
+  Check
 } from 'lucide-react';
 
 interface GatewaySession {
@@ -24,6 +27,10 @@ interface GatewaySession {
   customerEmail: string;
   customerPhone: string;
   purpose: string;
+  mode?: 'ONE_TIME' | 'AUTOPAY';
+  recurringFrequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  recurringCycles?: number;
+  maxMandateAmount?: number;
   status: 'PENDING' | 'PAID' | 'FAILED';
   razorpayKeyId: string;
   cancelUrl?: string;
@@ -92,17 +99,19 @@ export const GatewayCheckout: React.FC<GatewayCheckoutProps> = ({ sessionId }) =
     };
   }, []);
 
-  // 3. Launch Razorpay Payment
+  // 3. Launch Razorpay Payment / AutoPay Mandate
   const handlePayNow = () => {
     if (!session) return;
     setIsProcessing(true);
+
+    const isAutoPay = session.mode === 'AUTOPAY';
 
     const options = {
       key: session.razorpayKeyId || 'rzp_live_TSWw0AVQMFTDTK',
       amount: session.amount * 100, // in paise
       currency: session.currency || 'INR',
-      name: "Secure Payment Gateway",
-      description: session.purpose || `Order #${session.orderId}`,
+      name: isAutoPay ? "UPI AutoPay Mandate Setup" : "Secure Payment Gateway",
+      description: session.purpose || (isAutoPay ? `Recurring ${session.recurringFrequency} Plan` : `Order #${session.orderId}`),
       image: "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=200&q=80",
       handler: async function (response: any) {
         console.log("[GATEWAY RAZORPAY RESPONSE]", response);
@@ -115,10 +124,12 @@ export const GatewayCheckout: React.FC<GatewayCheckoutProps> = ({ sessionId }) =
       },
       notes: {
         gateway_session_id: session.sessionId,
-        merchant_order_id: session.orderId
+        merchant_order_id: session.orderId,
+        mandate_mode: session.mode || 'ONE_TIME',
+        frequency: session.recurringFrequency || 'monthly'
       },
       theme: {
-        color: "#10b981",
+        color: isAutoPay ? "#06b6d4" : "#10b981",
         backdrop_color: "rgba(15, 23, 42, 0.95)"
       },
       modal: {
@@ -201,7 +212,7 @@ export const GatewayCheckout: React.FC<GatewayCheckoutProps> = ({ sessionId }) =
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-white">
-        <div className="w-14 h-14 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4"></div>
+        <div className="w-14 h-14 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-4"></div>
         <p className="text-sm font-semibold text-slate-300">Initializing Secure Checkout Session...</p>
         <span className="text-xs text-slate-500 mt-1">256-Bit SSL Encrypted Channel</span>
       </div>
@@ -233,6 +244,8 @@ export const GatewayCheckout: React.FC<GatewayCheckoutProps> = ({ sessionId }) =
     );
   }
 
+  const isAutoPay = session.mode === 'AUTOPAY';
+
   // SUCCESS SCREEN (with auto-redirect)
   if (paymentSuccess) {
     return (
@@ -244,24 +257,32 @@ export const GatewayCheckout: React.FC<GatewayCheckoutProps> = ({ sessionId }) =
 
           <div className="space-y-1">
             <span className="text-[10px] uppercase font-black tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-              PAYMENT VERIFIED & CONFIRMED
+              {isAutoPay ? '⚡ AUTOPAY MANDATE ACTIVE' : 'PAYMENT VERIFIED & CONFIRMED'}
             </span>
-            <h2 className="text-2xl font-black text-white pt-2">₹{session.amount.toLocaleString('en-IN')} Paid</h2>
+            <h2 className="text-2xl font-black text-white pt-2">
+              ₹{session.amount.toLocaleString('en-IN')}{isAutoPay ? ` / ${session.recurringFrequency}` : ' Paid'}
+            </h2>
             <p className="text-xs text-slate-400">Order Reference: <strong className="text-white">{session.orderId}</strong></p>
           </div>
 
           <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-left text-xs space-y-2">
             <div className="flex justify-between text-slate-400">
-              <span>Item / Purpose:</span>
+              <span>Plan / Purpose:</span>
               <span className="text-white font-semibold">{session.purpose}</span>
             </div>
             <div className="flex justify-between text-slate-400">
               <span>Customer:</span>
               <span className="text-white font-semibold">{session.customerName || 'Customer'}</span>
             </div>
+            {isAutoPay && (
+              <div className="flex justify-between text-slate-400">
+                <span>Frequency:</span>
+                <span className="text-cyan-400 font-semibold uppercase">{session.recurringFrequency} AutoPay</span>
+              </div>
+            )}
             <div className="flex justify-between text-slate-400">
               <span>Status:</span>
-              <span className="text-emerald-400 font-bold">PAID (Complete)</span>
+              <span className="text-emerald-400 font-bold">{isAutoPay ? 'ACTIVE MANDATE ✓' : 'PAID (Complete)'}</span>
             </div>
           </div>
 
@@ -289,43 +310,45 @@ export const GatewayCheckout: React.FC<GatewayCheckoutProps> = ({ sessionId }) =
     );
   }
 
-  // MAIN HOSTED CHECKOUT SCREEN
+  // MAIN HOSTED CHECKOUT SCREEN (Supports both One-Time & AutoPay)
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-between py-8 px-4 text-slate-100 font-sans">
       
       {/* Top Header */}
       <header className="max-w-xl mx-auto w-full flex items-center justify-between pb-6">
         <div className="flex items-center space-x-2.5">
-          <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center font-black text-slate-950 text-base shadow-lg shadow-emerald-500/20">
-            <Zap className="w-5 h-5 text-slate-950" />
+          <div className={`w-9 h-9 ${isAutoPay ? 'bg-cyan-400' : 'bg-emerald-500'} rounded-xl flex items-center justify-center font-black text-slate-950 text-base shadow-lg`}>
+            {isAutoPay ? <Repeat className="w-5 h-5 text-slate-950" /> : <Zap className="w-5 h-5 text-slate-950" />}
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white tracking-wide">Universal Gateway Proxy</h1>
+            <h1 className="text-sm font-bold text-white tracking-wide">
+              {isAutoPay ? 'UPI AutoPay & Recurring Gateway' : 'Universal Gateway Proxy'}
+            </h1>
             <p className="text-[10px] text-slate-400">Razorpay Encrypted Switch</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-[11px] text-emerald-400 font-semibold">
+        <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-[11px] text-cyan-400 font-semibold">
           <ShieldCheck className="w-3.5 h-3.5" />
-          <span>256-Bit SSL Secured</span>
+          <span>NPCI / RBI e-Mandate Secured</span>
         </div>
       </header>
 
       {/* Main Checkout Card */}
       <main className="max-w-xl mx-auto w-full">
-        <div className="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl shadow-slate-950 relative overflow-hidden">
+        <div className={`bg-slate-900 border ${isAutoPay ? 'border-cyan-500/40 shadow-cyan-500/10' : 'border-slate-800/80'} rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden`}>
           
           {/* Subtle Top Accent Glow */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500"></div>
+          <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${isAutoPay ? 'from-cyan-500 via-teal-500 to-indigo-500' : 'from-emerald-500 via-teal-500 to-cyan-500'}`}></div>
 
           {/* Amount and Order Banner */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
             <div>
-              <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                HOSTED CHECKOUT
+              <span className={`text-[10px] uppercase font-bold tracking-widest ${isAutoPay ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'} px-2.5 py-0.5 rounded-full border`}>
+                {isAutoPay ? '⚡ RECURRING AUTOPAY' : 'HOSTED CHECKOUT'}
               </span>
               <h2 className="text-xl font-bold text-white mt-1">
-                {session.purpose || 'Payment Request'}
+                {session.purpose || 'Subscription Request'}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
                 Order ID: <span className="font-mono text-slate-300">{session.orderId}</span>
@@ -333,12 +356,34 @@ export const GatewayCheckout: React.FC<GatewayCheckoutProps> = ({ sessionId }) =
             </div>
 
             <div className="text-left sm:text-right bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 w-full sm:w-auto">
-              <span className="text-[10px] text-slate-400 font-semibold uppercase block">Amount Due</span>
-              <div className="text-3xl font-black text-emerald-400 font-display">
+              <span className="text-[10px] text-slate-400 font-semibold uppercase block">
+                {isAutoPay ? 'Subscription Rate' : 'Amount Due'}
+              </span>
+              <div className="text-3xl font-black text-cyan-400 font-display">
                 ₹{session.amount.toLocaleString('en-IN')}
+                {isAutoPay && (
+                  <span className="text-xs font-normal text-slate-400 block font-sans">
+                    / {session.recurringFrequency}
+                  </span>
+                )}
               </div>
             </div>
           </div>
+
+          {/* AutoPay Mandate Terms Box */}
+          {isAutoPay && (
+            <div className="bg-gradient-to-r from-cyan-950/50 to-slate-950 p-4 rounded-2xl border border-cyan-500/30 space-y-2">
+              <div className="flex items-center space-x-2 text-xs font-bold text-cyan-300">
+                <Repeat className="w-4 h-4 text-cyan-400" />
+                <span>UPI AutoPay Mandate Specifications</span>
+              </div>
+              <ul className="text-[11px] text-slate-300 space-y-1.5 list-disc list-inside">
+                <li>Debit Frequency: <strong>Every {session.recurringFrequency}</strong> (up to {session.recurringCycles || 12} cycles)</li>
+                <li>Max Authorized Limit: <strong>₹{session.maxMandateAmount?.toLocaleString('en-IN') || session.amount}</strong></li>
+                <li>Full Control: <strong>Pause or Cancel anytime</strong> from GPay, PhonePe, Paytm or Netbanking.</li>
+              </ul>
+            </div>
+          )}
 
           {/* Customer Summary (if provided) */}
           {(session.customerName || session.customerEmail || session.customerPhone) && (
@@ -369,25 +414,25 @@ export const GatewayCheckout: React.FC<GatewayCheckoutProps> = ({ sessionId }) =
             </div>
           )}
 
-          {/* Payment Methods Supported */}
+          {/* Supported Modes */}
           <div className="space-y-3">
             <div className="flex items-center justify-between text-xs text-slate-300 font-semibold">
-              <span>Supported Instant Payment Modes:</span>
-              <span className="text-emerald-400 font-bold">0% Convenience Fee</span>
+              <span>{isAutoPay ? 'Supported AutoPay Apps:' : 'Supported Instant Payment Modes:'}</span>
+              <span className="text-emerald-400 font-bold">0% Setup Fee</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2.5 text-center text-[11px] font-semibold text-slate-300">
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col items-center justify-center space-y-1">
-                <span className="text-emerald-400 font-bold">📱 UPI</span>
+                <span className="text-cyan-400 font-bold">⚡ UPI AutoPay</span>
                 <span className="text-[9px] text-slate-400">GPay, PhonePe, Paytm</span>
               </div>
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col items-center justify-center space-y-1">
-                <span className="text-cyan-400 font-bold">💳 Cards</span>
-                <span className="text-[9px] text-slate-400">Debit / Credit Cards</span>
+                <span className="text-emerald-400 font-bold">💳 Card Mandate</span>
+                <span className="text-[9px] text-slate-400">Debit / Credit AutoPay</span>
               </div>
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col items-center justify-center space-y-1">
-                <span className="text-indigo-400 font-bold">🏦 Banking</span>
-                <span className="text-[9px] text-slate-400">Netbanking & Wallets</span>
+                <span className="text-indigo-400 font-bold">🏦 e-NACH</span>
+                <span className="text-[9px] text-slate-400">Netbanking Mandate</span>
               </div>
             </div>
           </div>
@@ -397,12 +442,14 @@ export const GatewayCheckout: React.FC<GatewayCheckoutProps> = ({ sessionId }) =
             <button
               onClick={handlePayNow}
               disabled={isProcessing}
-              className="w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black py-4 rounded-2xl text-base shadow-xl shadow-emerald-500/25 transition-all hover:scale-[1.02] flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer"
+              className={`w-full bg-gradient-to-r ${isAutoPay ? 'from-cyan-500 via-teal-400 to-cyan-400 hover:from-cyan-400 hover:to-teal-300 shadow-cyan-500/25' : 'from-emerald-500 via-teal-500 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 shadow-emerald-500/25'} text-slate-950 font-black py-4 rounded-2xl text-base shadow-xl transition-all hover:scale-[1.02] flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer`}
             >
               <Lock className="w-5 h-5 text-slate-950" />
               <span>
                 {isProcessing
-                  ? 'Connecting to Razorpay...'
+                  ? 'Connecting to Mandate Gateway...'
+                  : isAutoPay
+                  ? `Authorize ₹${session.amount.toLocaleString('en-IN')}/${session.recurringFrequency} AutoPay ⚡`
                   : `Proceed to Pay ₹${session.amount.toLocaleString('en-IN')}`}
               </span>
             </button>
@@ -425,7 +472,7 @@ export const GatewayCheckout: React.FC<GatewayCheckoutProps> = ({ sessionId }) =
       {/* Footer */}
       <footer className="max-w-xl mx-auto w-full text-center text-[11px] text-slate-500 pt-6 space-y-1">
         <p>Powered by Universal Hosted Payment Gateway Proxy • 100% Encrypted via Razorpay Live</p>
-        <p>Merchant Signature Verified • Session: <span className="font-mono text-slate-400">{session.sessionId}</span></p>
+        <p>NPCI e-Mandate Framework • Session: <span className="font-mono text-slate-400">{session.sessionId}</span></p>
       </footer>
 
     </div>

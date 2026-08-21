@@ -4,7 +4,7 @@ import { DESTINATION_PRESETS, TripPreset } from '../data/tripPresets';
 import { SeatMap } from './SeatMap';
 import { ImageUploader } from './ImageUploader';
 import { AdminGeminiAssistant } from './AdminGeminiAssistant';
-import { LayoutDashboard, Plus, Trash2, Edit3, Users, DollarSign, Bus, Megaphone, ShieldCheck, Sparkles, CheckCircle, AlertCircle, MapPin, Calendar, Lock, ShieldAlert, KeyRound, User, Rocket, Compass, Filter, X, Zap, Copy, Check, Eye, EyeOff, Code, Globe, ArrowUpRight, CheckCircle2, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Plus, Trash2, Edit3, Users, DollarSign, Bus, Megaphone, ShieldCheck, Sparkles, CheckCircle, AlertCircle, MapPin, Calendar, Lock, ShieldAlert, KeyRound, User, Rocket, Compass, Filter, X, Zap, Copy, Check, Eye, EyeOff, Code, Globe, ArrowUpRight, CheckCircle2, RefreshCw, Repeat } from 'lucide-react';
 
 interface AdminDashboardProps {
   trips: Trip[];
@@ -51,11 +51,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [codeTab, setCodeTab] = useState<'node' | 'php' | 'python' | 'curl'>('node');
 
   // Test Payment Session Generator State
-  const [testAmount, setTestAmount] = useState(100);
+  const [testMode, setTestMode] = useState<'ONE_TIME' | 'AUTOPAY'>('ONE_TIME');
+  const [testFrequency, setTestFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
+  const [testAmount, setTestAmount] = useState(499);
   const [testOrderId, setTestOrderId] = useState(`ORD_${Math.floor(100000 + Math.random() * 900000)}`);
   const [testCustomerName, setTestCustomerName] = useState('Harsh Customer');
   const [testCustomerEmail, setTestCustomerEmail] = useState('customer@example.com');
-  const [testPurpose, setTestPurpose] = useState('External Site Product Purchase');
+  const [testPurpose, setTestPurpose] = useState('SaaS Premium Subscription');
   const [createdPaymentUrl, setCreatedPaymentUrl] = useState<string | null>(null);
   const [isGeneratingSession, setIsGeneratingSession] = useState(false);
   const [gatewayTransactionsList, setGatewayTransactionsList] = useState<any[]>([]);
@@ -103,6 +105,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           customer_name: testCustomerName,
           customer_email: testCustomerEmail,
           purpose: testPurpose,
+          mode: testMode,
+          recurring_frequency: testFrequency,
           success_url: window.location.origin,
           cancel_url: window.location.origin
         })
@@ -1604,68 +1608,133 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </p>
             </div>
 
-            <form onSubmit={handleCreateTestGatewaySession} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+            <form onSubmit={handleCreateTestGatewaySession} className="space-y-4 text-xs">
+              
+              {/* Payment Mode Selector */}
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">Amount (₹ INR) *</label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={testAmount}
-                  onChange={(e) => setTestAmount(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-bold text-sm focus:outline-none"
-                />
+                <label className="block text-slate-400 font-semibold mb-1.5">Select Gateway Mode *</label>
+                <div className="grid grid-cols-2 gap-3 max-w-md">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTestMode('ONE_TIME');
+                      setTestPurpose('Product Purchase');
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                      testMode === 'ONE_TIME'
+                        ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-1.5 text-xs font-bold text-emerald-400 mb-0.5">
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>1. Standard One-Time</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-normal">Normal 1-time instant checkout</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTestMode('AUTOPAY');
+                      setTestPurpose('SaaS Recurring Subscription');
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                      testMode === 'AUTOPAY'
+                        ? 'bg-cyan-500/15 border-cyan-500 text-white font-bold'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-1.5 text-xs font-bold text-cyan-400 mb-0.5">
+                      <Repeat className="w-3.5 h-3.5" />
+                      <span>2. UPI AutoPay Mandate</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-normal">Recurring monthly/yearly e-mandate</p>
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Order Reference ID *</label>
-                <input
-                  type="text"
-                  required
-                  value={testOrderId}
-                  onChange={(e) => setTestOrderId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">
+                    {testMode === 'AUTOPAY' ? 'Recurring Amount (₹ / Cycle) *' : 'Amount (₹ INR) *'}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={testAmount}
+                    onChange={(e) => setTestAmount(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-bold text-sm focus:outline-none"
+                  />
+                </div>
+
+                {testMode === 'AUTOPAY' && (
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Billing Frequency *</label>
+                    <select
+                      value={testFrequency}
+                      onChange={(e: any) => setTestFrequency(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs font-semibold focus:outline-none"
+                    >
+                      <option value="monthly">Monthly (Every 30 Days)</option>
+                      <option value="yearly">Yearly (Every 365 Days)</option>
+                      <option value="weekly">Weekly (Every 7 Days)</option>
+                      <option value="daily">Daily (Micro-Subscription)</option>
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Order Reference ID *</label>
+                  <input
+                    type="text"
+                    required
+                    value={testOrderId}
+                    onChange={(e) => setTestOrderId(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Customer Name</label>
+                  <input
+                    type="text"
+                    value={testCustomerName}
+                    onChange={(e) => setTestCustomerName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Customer Email</label>
+                  <input
+                    type="email"
+                    value={testCustomerEmail}
+                    onChange={(e) => setTestCustomerEmail(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                  />
+                </div>
+
+                <div className={testMode === 'AUTOPAY' ? 'sm:col-span-2' : 'sm:col-span-2'}>
+                  <label className="block text-slate-400 font-semibold mb-1">Purpose / Plan Name</label>
+                  <input
+                    type="text"
+                    value={testPurpose}
+                    onChange={(e) => setTestPurpose(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Customer Name</label>
-                <input
-                  type="text"
-                  value={testCustomerName}
-                  onChange={(e) => setTestCustomerName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Customer Email</label>
-                <input
-                  type="email"
-                  value={testCustomerEmail}
-                  onChange={(e) => setTestCustomerEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-slate-400 font-semibold mb-1">Purpose / Item Name</label>
-                <input
-                  type="text"
-                  value={testPurpose}
-                  onChange={(e) => setTestPurpose(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
-                />
-              </div>
-
-              <div className="sm:col-span-3 pt-2">
+              <div className="pt-2">
                 <button
                   type="submit"
                   disabled={isGeneratingSession}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3.5 rounded-2xl text-xs flex items-center space-x-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-50"
+                  className={`bg-gradient-to-r ${testMode === 'AUTOPAY' ? 'from-cyan-500 to-teal-400 shadow-cyan-500/20' : 'from-emerald-500 to-teal-400 shadow-emerald-500/20'} hover:opacity-90 text-slate-950 font-bold px-6 py-3.5 rounded-2xl text-xs flex items-center space-x-2 shadow-lg transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-50`}
                 >
-                  <Zap className="w-4 h-4" />
-                  <span>{isGeneratingSession ? 'Generating Session...' : 'Generate Live Checkout URL ⚡'}</span>
+                  {testMode === 'AUTOPAY' ? <Repeat className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                  <span>{isGeneratingSession ? 'Generating Mandate...' : testMode === 'AUTOPAY' ? 'Generate UPI AutoPay Mandate Link ⚡' : 'Generate Live Checkout URL ⚡'}</span>
                 </button>
               </div>
             </form>
@@ -1756,8 +1825,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <button
                 onClick={() => {
                   let textToCopy = '';
+                  const isAuto = testMode === 'AUTOPAY';
                   if (codeTab === 'node') {
-                    textToCopy = `// 1. In your other website (Backend/Frontend):
+                    textToCopy = `// In your external website (Node.js / Express / Frontend):
 const response = await fetch("https://wandervibe-email-service.onrender.com/api/gateway/create-session", {
   method: "POST",
   headers: {
@@ -1765,11 +1835,12 @@ const response = await fetch("https://wandervibe-email-service.onrender.com/api/
     "x-gateway-key": "${gatewayApiKey}"
   },
   body: JSON.stringify({
-    order_id: "ORD_99882",
-    amount: 1500, // ₹1,500
-    customer_name: "Customer Name",
+    order_id: "${isAuto ? 'SUB_99882' : 'ORD_99882'}",
+    amount: ${testAmount}, // ₹${testAmount}
+    mode: "${testMode}", // "${testMode}"
+    ${isAuto ? `recurring_frequency: "${testFrequency}", // 'monthly' | 'yearly' | 'weekly'\n    recurring_cycles: 12,\n` : ''}customer_name: "Customer Name",
     customer_email: "customer@gmail.com",
-    purpose: "Website Order #99882",
+    purpose: "${testPurpose}",
     success_url: "https://your-site.com/payment-success",
     cancel_url: "https://your-site.com/payment-cancel",
     webhook_url: "https://your-site.com/api/webhook"
@@ -1777,17 +1848,18 @@ const response = await fetch("https://wandervibe-email-service.onrender.com/api/
 });
 
 const data = await response.json();
-// 2. Redirect customer to the secure checkout page:
+// Redirect customer to the secure checkout page:
 window.location.href = data.payment_url;`;
                   } else if (codeTab === 'php') {
                     textToCopy = `<?php
 // In your PHP Website:
 $payload = json_encode([
-    "order_id" => "ORD_" . time(),
-    "amount" => 1500,
-    "customer_name" => "Customer Name",
+    "order_id" => "${isAuto ? 'SUB_' : 'ORD_'}" . time(),
+    "amount" => ${testAmount},
+    "mode" => "${testMode}",
+    ${isAuto ? `"recurring_frequency" => "${testFrequency}",\n    "recurring_cycles" => 12,\n` : ''}"customer_name" => "Customer Name",
     "customer_email" => "customer@gmail.com",
-    "purpose" => "E-commerce Purchase",
+    "purpose" => "${testPurpose}",
     "success_url" => "https://your-site.com/success.php",
     "cancel_url" => "https://your-site.com/cancel.php",
     "webhook_url" => "https://your-site.com/webhook.php"
@@ -1820,11 +1892,12 @@ response = requests.post(
         "x-gateway-key": "${gatewayApiKey}"
     },
     json={
-        "order_id": "ORD_12345",
-        "amount": 1500,
-        "customer_name": "Rahul Verma",
+        "order_id": "${isAuto ? 'SUB_12345' : 'ORD_12345'}",
+        "amount": ${testAmount},
+        "mode": "${testMode}",
+        ${isAuto ? `"recurring_frequency": "${testFrequency}",\n        "recurring_cycles": 12,\n` : ''}"customer_name": "Rahul Verma",
         "customer_email": "rahul@gmail.com",
-        "purpose": "Course Enrollment",
+        "purpose": "${testPurpose}",
         "success_url": "https://your-site.com/success",
         "cancel_url": "https://your-site.com/cancel",
         "webhook_url": "https://your-site.com/api/webhook"
@@ -1838,11 +1911,12 @@ data = response.json()
   -H "Content-Type: application/json" \\
   -H "x-gateway-key: ${gatewayApiKey}" \\
   -d '{
-    "order_id": "ORD_99882",
-    "amount": 1500,
-    "customer_name": "John Doe",
+    "order_id": "${isAuto ? 'SUB_99882' : 'ORD_99882'}",
+    "amount": ${testAmount},
+    "mode": "${testMode}",
+    ${isAuto ? `"recurring_frequency": "${testFrequency}",\n    "recurring_cycles": 12,\n` : ''}"customer_name": "John Doe",
     "customer_email": "john@example.com",
-    "purpose": "Digital Product Purchase",
+    "purpose": "${testPurpose}",
     "success_url": "https://your-site.com/success",
     "cancel_url": "https://your-site.com/cancel"
   }'`;
@@ -1850,14 +1924,14 @@ data = response.json()
                   navigator.clipboard.writeText(textToCopy);
                   alert("Code snippet copied to clipboard!");
                 }}
-                className="absolute top-4 right-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center space-x-1 border border-slate-700"
+                className="absolute top-4 right-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center space-x-1 border border-slate-700 cursor-pointer"
               >
                 <Copy className="w-3.5 h-3.5" />
                 <span>Copy Code</span>
               </button>
 
               <pre className="whitespace-pre">
-                {codeTab === 'node' && `// 1. In your other website (Backend/Frontend):
+                {codeTab === 'node' && `// In your external website (Node.js / Express / Frontend):
 const response = await fetch("https://wandervibe-email-service.onrender.com/api/gateway/create-session", {
   method: "POST",
   headers: {
@@ -1865,11 +1939,12 @@ const response = await fetch("https://wandervibe-email-service.onrender.com/api/
     "x-gateway-key": "${gatewayApiKey}"
   },
   body: JSON.stringify({
-    order_id: "ORD_99882",
-    amount: 1500, // ₹1,500
-    customer_name: "Customer Name",
+    order_id: "${testMode === 'AUTOPAY' ? 'SUB_99882' : 'ORD_99882'}",
+    amount: ${testAmount}, // ₹${testAmount}
+    mode: "${testMode}", // "${testMode}"
+    ${testMode === 'AUTOPAY' ? `recurring_frequency: "${testFrequency}", // 'monthly' | 'yearly' | 'weekly'\n    recurring_cycles: 12,\n    ` : ''}customer_name: "Customer Name",
     customer_email: "customer@gmail.com",
-    purpose: "Website Order #99882",
+    purpose: "${testPurpose}",
     success_url: "https://your-site.com/payment-success",
     cancel_url: "https://your-site.com/payment-cancel",
     webhook_url: "https://your-site.com/api/webhook"
@@ -1877,17 +1952,18 @@ const response = await fetch("https://wandervibe-email-service.onrender.com/api/
 });
 
 const data = await response.json();
-// 2. Redirect customer to the secure checkout page:
+// Redirect customer to the secure checkout page:
 window.location.href = data.payment_url;`}
 
                 {codeTab === 'php' && `<?php
 // In your PHP Website:
 $payload = json_encode([
-    "order_id" => "ORD_" . time(),
-    "amount" => 1500,
-    "customer_name" => "Customer Name",
+    "order_id" => "${testMode === 'AUTOPAY' ? 'SUB_' : 'ORD_'}" . time(),
+    "amount" => ${testAmount},
+    "mode" => "${testMode}",
+    ${testMode === 'AUTOPAY' ? `"recurring_frequency" => "${testFrequency}",\n    "recurring_cycles" => 12,\n    ` : ''}"customer_name" => "Customer Name",
     "customer_email" => "customer@gmail.com",
-    "purpose" => "E-commerce Purchase",
+    "purpose" => "${testPurpose}",
     "success_url" => "https://your-site.com/success.php",
     "cancel_url" => "https://your-site.com/cancel.php",
     "webhook_url" => "https://your-site.com/webhook.php"
@@ -1920,11 +1996,12 @@ response = requests.post(
         "x-gateway-key": "${gatewayApiKey}"
     },
     json={
-        "order_id": "ORD_12345",
-        "amount": 1500,
-        "customer_name": "Rahul Verma",
+        "order_id": "${testMode === 'AUTOPAY' ? 'SUB_12345' : 'ORD_12345'}",
+        "amount": ${testAmount},
+        "mode": "${testMode}",
+        ${testMode === 'AUTOPAY' ? `"recurring_frequency": "${testFrequency}",\n        "recurring_cycles": 12,\n        ` : ''}"customer_name": "Rahul Verma",
         "customer_email": "rahul@gmail.com",
-        "purpose": "Course Enrollment",
+        "purpose": "${testPurpose}",
         "success_url": "https://your-site.com/success",
         "cancel_url": "https://your-site.com/cancel",
         "webhook_url": "https://your-site.com/api/webhook"
@@ -1938,11 +2015,12 @@ data = response.json()
   -H "Content-Type: application/json" \\
   -H "x-gateway-key: ${gatewayApiKey}" \\
   -d '{
-    "order_id": "ORD_99882",
-    "amount": 1500,
-    "customer_name": "John Doe",
+    "order_id": "${testMode === 'AUTOPAY' ? 'SUB_99882' : 'ORD_99882'}",
+    "amount": ${testAmount},
+    "mode": "${testMode}",
+    ${testMode === 'AUTOPAY' ? `"recurring_frequency": "${testFrequency}",\n    "recurring_cycles": 12,\n    ` : ''}"customer_name": "John Doe",
     "customer_email": "john@example.com",
-    "purpose": "Digital Product Purchase",
+    "purpose": "${testPurpose}",
     "success_url": "https://your-site.com/success",
     "cancel_url": "https://your-site.com/cancel"
   }'`}

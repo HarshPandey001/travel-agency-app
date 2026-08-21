@@ -110,7 +110,12 @@ app.post('/api/gateway/create-session', async (req, res) => {
       success_url,
       cancel_url,
       webhook_url,
-      custom_fields = {}
+      custom_fields = {},
+      // AutoPay / Recurring Mandate Fields
+      mode = 'ONE_TIME', // 'ONE_TIME' | 'AUTOPAY'
+      recurring_frequency = 'monthly', // 'daily' | 'weekly' | 'monthly' | 'yearly'
+      recurring_cycles = 12,
+      max_mandate_amount
     } = req.body;
 
     const numAmount = Number(amount);
@@ -118,7 +123,8 @@ app.post('/api/gateway/create-session', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid amount. Must be greater than 0.' });
     }
 
-    const uniqueOrderId = order_id || `ORD_${Date.now().toString().slice(-6)}`;
+    const isAutoPay = mode.toUpperCase() === 'AUTOPAY';
+    const uniqueOrderId = order_id || (isAutoPay ? `SUB_${Date.now().toString().slice(-6)}` : `ORD_${Date.now().toString().slice(-6)}`);
     const sessionId = `pay_sess_${crypto.randomBytes(12).toString('hex')}`;
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour expiry
 
@@ -135,6 +141,12 @@ app.post('/api/gateway/create-session', async (req, res) => {
       cancelUrl: cancel_url || '',
       webhookUrl: webhook_url || '',
       customFields: custom_fields,
+      // AutoPay Data
+      mode: isAutoPay ? 'AUTOPAY' : 'ONE_TIME',
+      recurringFrequency: recurring_frequency,
+      recurringCycles: Number(recurring_cycles) || 12,
+      maxMandateAmount: Number(max_mandate_amount) || Math.round(numAmount * 1.5),
+      mandateStatus: isAutoPay ? 'PENDING_AUTH' : null,
       status: 'PENDING',
       createdAt: new Date().toISOString(),
       expiresAt,
@@ -152,6 +164,8 @@ app.post('/api/gateway/create-session', async (req, res) => {
       customerName: customer_name,
       customerEmail: customer_email,
       purpose,
+      mode: sessionData.mode,
+      recurringFrequency: sessionData.recurringFrequency,
       status: 'PENDING',
       createdAt: new Date().toISOString()
     });
@@ -162,8 +176,8 @@ app.post('/api/gateway/create-session', async (req, res) => {
     const paymentUrl = `${HOSTED_CHECKOUT_BASE_URL}/?pay_session=${sessionId}`;
 
     console.log(`\n========================================`);
-    console.log(`[GATEWAY SESSION CREATED] Session: ${sessionId}`);
-    console.log(`[ORDER] ID: ${uniqueOrderId} | Amount: ₹${numAmount} | Purpose: ${purpose}`);
+    console.log(`[GATEWAY SESSION CREATED] Mode: ${sessionData.mode} | Session: ${sessionId}`);
+    console.log(`[ORDER] ID: ${uniqueOrderId} | Amount: ₹${numAmount}${isAutoPay ? ` / ${recurring_frequency}` : ''} | Purpose: ${purpose}`);
     console.log(`[CHECKOUT URL] ${paymentUrl}`);
     console.log(`========================================\n`);
 
@@ -173,6 +187,8 @@ app.post('/api/gateway/create-session', async (req, res) => {
       order_id: uniqueOrderId,
       amount: numAmount,
       currency: currency.toUpperCase(),
+      mode: sessionData.mode,
+      recurring_frequency: sessionData.recurringFrequency,
       payment_url: paymentUrl,
       expires_at: expiresAt
     });
@@ -203,6 +219,10 @@ app.get('/api/gateway/session/:sessionId', (req, res) => {
       customerEmail: session.customerEmail,
       customerPhone: session.customerPhone,
       purpose: session.purpose,
+      mode: session.mode || 'ONE_TIME',
+      recurringFrequency: session.recurringFrequency || 'monthly',
+      recurringCycles: session.recurringCycles || 12,
+      maxMandateAmount: session.maxMandateAmount || session.amount,
       status: session.status,
       razorpayKeyId: RAZORPAY_KEY_ID,
       cancelUrl: session.cancelUrl,
