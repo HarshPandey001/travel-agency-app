@@ -4,7 +4,7 @@ import { DESTINATION_PRESETS, TripPreset } from '../data/tripPresets';
 import { SeatMap } from './SeatMap';
 import { ImageUploader } from './ImageUploader';
 import { AdminGeminiAssistant } from './AdminGeminiAssistant';
-import { LayoutDashboard, Plus, Trash2, Edit3, Users, DollarSign, Bus, Megaphone, ShieldCheck, Sparkles, CheckCircle, AlertCircle, MapPin, Calendar, Lock, ShieldAlert, KeyRound, User, Rocket, Compass, Filter, X } from 'lucide-react';
+import { LayoutDashboard, Plus, Trash2, Edit3, Users, DollarSign, Bus, Megaphone, ShieldCheck, Sparkles, CheckCircle, AlertCircle, MapPin, Calendar, Lock, ShieldAlert, KeyRound, User, Rocket, Compass, Filter, X, Zap, Copy, Check, Eye, EyeOff, Code, Globe, ArrowUpRight, CheckCircle2, RefreshCw } from 'lucide-react';
 
 interface AdminDashboardProps {
   trips: Trip[];
@@ -31,7 +31,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSendAnnouncement,
   onCancelBooking
 }) => {
-  const [activeTab, setActiveTab] = useState<'trips' | 'seat_mgmt' | 'roster' | 'cancelled_tickets' | 'announcements' | 'gemini_ai'>('trips');
+  const [activeTab, setActiveTab] = useState<'trips' | 'seat_mgmt' | 'roster' | 'cancelled_tickets' | 'announcements' | 'gemini_ai' | 'gateway_api'>('trips');
   const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
   const [cancellationReasonInput, setCancellationReasonInput] = useState<string>('Traveler Cancellation Request / Refund Processed');
   const [isCreatingTrip, setIsCreatingTrip] = useState(false);
@@ -42,6 +42,85 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedSeatMgmtTripId, setSelectedSeatMgmtTripId] = useState<string>(trips[0]?.id || '');
   const [selectedRosterTripId, setSelectedRosterTripId] = useState<string>(trips[0]?.id || '');
   const [resendingBookingId, setResendingBookingId] = useState<string | null>(null);
+
+  // Universal Payment Gateway API State
+  const [gatewayApiKey, setGatewayApiKey] = useState('wv_gw_live_sec_harsh9988');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isCopiedKey, setIsCopiedKey] = useState(false);
+  const [isCopiedEndpoint, setIsCopiedEndpoint] = useState(false);
+  const [codeTab, setCodeTab] = useState<'node' | 'php' | 'python' | 'curl'>('node');
+
+  // Test Payment Session Generator State
+  const [testAmount, setTestAmount] = useState(100);
+  const [testOrderId, setTestOrderId] = useState(`ORD_${Math.floor(100000 + Math.random() * 900000)}`);
+  const [testCustomerName, setTestCustomerName] = useState('Harsh Customer');
+  const [testCustomerEmail, setTestCustomerEmail] = useState('customer@example.com');
+  const [testPurpose, setTestPurpose] = useState('External Site Product Purchase');
+  const [createdPaymentUrl, setCreatedPaymentUrl] = useState<string | null>(null);
+  const [isGeneratingSession, setIsGeneratingSession] = useState(false);
+  const [gatewayTransactionsList, setGatewayTransactionsList] = useState<any[]>([]);
+  const [isLoadingGatewayTxs, setIsLoadingGatewayTxs] = useState(false);
+
+  const fetchGatewayTransactions = async () => {
+    try {
+      setIsLoadingGatewayTxs(true);
+      const baseUrl = (import.meta as any).env?.VITE_BACKEND_URL || 
+        (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+          ? 'http://localhost:5000' 
+          : 'https://wandervibe-email-service.onrender.com');
+      const res = await fetch(`${baseUrl}/api/gateway/transactions`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.transactions)) {
+        setGatewayTransactionsList(data.transactions);
+      }
+    } catch (e) {
+      console.warn("Could not fetch gateway txs:", e);
+    } finally {
+      setIsLoadingGatewayTxs(false);
+    }
+  };
+
+  const handleCreateTestGatewaySession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsGeneratingSession(true);
+    setCreatedPaymentUrl(null);
+
+    try {
+      const baseUrl = (import.meta as any).env?.VITE_BACKEND_URL || 
+        (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+          ? 'http://localhost:5000' 
+          : 'https://wandervibe-email-service.onrender.com');
+
+      const response = await fetch(`${baseUrl}/api/gateway/create-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gateway-key': gatewayApiKey
+        },
+        body: JSON.stringify({
+          order_id: testOrderId,
+          amount: testAmount,
+          customer_name: testCustomerName,
+          customer_email: testCustomerEmail,
+          purpose: testPurpose,
+          success_url: window.location.origin,
+          cancel_url: window.location.origin
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success && data.payment_url) {
+        setCreatedPaymentUrl(data.payment_url);
+        fetchGatewayTransactions();
+      } else {
+        alert("Gateway Error: " + (data.error || 'Failed to create session'));
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsGeneratingSession(false);
+    }
+  };
 
   const handleResendEmail = async (booking: Booking) => {
     setResendingBookingId(booking.id);
@@ -652,7 +731,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-spin-slow" />
-            <span>🤖 Gemini AI Copilot (Photos & Ideas)</span>
+            <span>🤖 Gemini AI Copilot</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('gateway_api');
+              fetchGatewayTransactions();
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+              activeTab === 'gateway_api'
+                ? 'bg-cyan-400 text-slate-950 font-bold shadow-md shadow-cyan-400/25'
+                : 'bg-cyan-950/40 text-cyan-300 hover:bg-cyan-900/50 border border-cyan-500/30'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>⚡ Universal Payment Switch & API</span>
           </button>
         </div>
 
@@ -1368,6 +1462,560 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             setIsCreatingTrip(true);
           }}
         />
+      )}
+
+      {/* TAB 6: UNIVERSAL PAYMENT GATEWAY SWITCH & API DASHBOARD */}
+      {activeTab === 'gateway_api' && (
+        <div className="space-y-6 text-white">
+          
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-cyan-950/80 via-slate-900 to-slate-950 p-6 sm:p-8 rounded-3xl border border-cyan-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div className="space-y-2 relative z-10">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
+                UNIVERSAL RAZORPAY PROXY SWITCH
+              </span>
+              <h3 className="text-2xl font-black font-display text-white">
+                Universal Hosted Payment Gateway & API
+              </h3>
+              <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                Connect <strong>any of your external websites, apps, or client stores</strong> to collect payments via your single Razorpay merchant account. Your external websites call your API, customer pays on your secure hosted checkout, and webhook notifies the external site automatically!
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3 relative z-10 flex-shrink-0">
+              <button
+                onClick={fetchGatewayTransactions}
+                disabled={isLoadingGatewayTxs}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-3 rounded-2xl text-xs font-semibold flex items-center space-x-2 border border-slate-700 transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoadingGatewayTxs ? 'animate-spin' : ''}`} />
+                <span>Refresh Live Log</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Secret API Key & Gateway Endpoints Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Merchant API Secret Key Box */}
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-300 flex items-center space-x-2">
+                  <KeyRound className="w-4 h-4 text-cyan-400" />
+                  <span>Gateway Secret API Key</span>
+                </span>
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-mono">
+                  LIVE SECRET
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Pass this key in the <code className="text-cyan-300 bg-slate-950 px-1.5 py-0.5 rounded">x-gateway-key</code> header when creating payment sessions from your other websites.
+              </p>
+
+              <div className="flex items-center space-x-2 bg-slate-950 p-2.5 rounded-2xl border border-slate-800 font-mono text-xs">
+                <input
+                  type={showApiKey ? 'text' : 'password'}
+                  readOnly
+                  value={gatewayApiKey}
+                  className="flex-1 bg-transparent text-slate-200 outline-none px-2 text-xs"
+                />
+                <button
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
+                  title="Show/Hide Key"
+                >
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(gatewayApiKey);
+                    setIsCopiedKey(true);
+                    setTimeout(() => setIsCopiedKey(false), 2000);
+                  }}
+                  className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center space-x-1 transition-all"
+                >
+                  {isCopiedKey ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{isCopiedKey ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
+              <div className="text-[11px] text-slate-400 flex items-center space-x-2 pt-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                <span>Keep this secret. Never share it with untrusted clients.</span>
+              </div>
+            </div>
+
+            {/* REST API Endpoints Box */}
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-300 flex items-center space-x-2">
+                  <Globe className="w-4 h-4 text-emerald-400" />
+                  <span>Universal API Endpoints</span>
+                </span>
+                <span className="text-[10px] bg-cyan-500/10 text-cyan-400 px-2.5 py-0.5 rounded-full border border-cyan-500/20 font-mono">
+                  HTTPS REST
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold text-emerald-400">1. Create Checkout Session (POST)</span>
+                    <button
+                      onClick={() => {
+                        const url = 'https://wandervibe-email-service.onrender.com/api/gateway/create-session';
+                        navigator.clipboard.writeText(url);
+                        setIsCopiedEndpoint(true);
+                        setTimeout(() => setIsCopiedEndpoint(false), 2000);
+                      }}
+                      className="text-[10px] text-cyan-400 hover:underline flex items-center space-x-1"
+                    >
+                      <span>{isCopiedEndpoint ? '✓ Copied' : 'Copy URL'}</span>
+                    </button>
+                  </div>
+                  <code className="text-slate-300 block font-mono text-[11px] break-all">
+                    https://wandervibe-email-service.onrender.com/api/gateway/create-session
+                  </code>
+                </div>
+
+                <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-cyan-400">2. Hosted Checkout Domain</span>
+                  <code className="text-slate-300 block font-mono text-[11px] break-all">
+                    https://dateandtravel-app.web.app/?pay_session=&#123;session_id&#125;
+                  </code>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Live Interactive Test Checkout Generator */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+            <div>
+              <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                LIVE TEST GENERATOR
+              </span>
+              <h4 className="text-lg font-bold text-white mt-1">Generate Instant Test Payment Link</h4>
+              <p className="text-xs text-slate-400">
+                Fill the form below to generate a real, working payment session link to test from your browser:
+              </p>
+            </div>
+
+            <form onSubmit={handleCreateTestGatewaySession} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Amount (₹ INR) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={testAmount}
+                  onChange={(e) => setTestAmount(Number(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-bold text-sm focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Order Reference ID *</label>
+                <input
+                  type="text"
+                  required
+                  value={testOrderId}
+                  onChange={(e) => setTestOrderId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Customer Name</label>
+                <input
+                  type="text"
+                  value={testCustomerName}
+                  onChange={(e) => setTestCustomerName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Customer Email</label>
+                <input
+                  type="email"
+                  value={testCustomerEmail}
+                  onChange={(e) => setTestCustomerEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-slate-400 font-semibold mb-1">Purpose / Item Name</label>
+                <input
+                  type="text"
+                  value={testPurpose}
+                  onChange={(e) => setTestPurpose(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={isGeneratingSession}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3.5 rounded-2xl text-xs flex items-center space-x-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-50"
+                >
+                  <Zap className="w-4 h-4" />
+                  <span>{isGeneratingSession ? 'Generating Session...' : 'Generate Live Checkout URL ⚡'}</span>
+                </button>
+              </div>
+            </form>
+
+            {createdPaymentUrl && (
+              <div className="bg-emerald-950/40 border-2 border-emerald-500/40 p-5 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-400 flex items-center space-x-1.5">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Live Checkout URL Created Successfully!</span>
+                  </span>
+                  <a
+                    href={createdPaymentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1 rounded-xl text-xs flex items-center space-x-1"
+                  >
+                    <span>Open Checkout</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
+                <div className="flex items-center space-x-2 bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs text-slate-200 break-all">
+                  <span className="flex-1 truncate">{createdPaymentUrl}</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdPaymentUrl);
+                      alert("Checkout URL copied!");
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-lg text-xs flex-shrink-0"
+                  >
+                    Copy Link
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Integration Code Snippets (Node.js, PHP, Python, cURL) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-full border border-cyan-500/20">
+                  DEVELOPER INTEGRATION
+                </span>
+                <h4 className="text-lg font-bold text-white mt-1">Copy-Paste Integration Code for Other Websites</h4>
+              </div>
+
+              {/* Code Tab Switcher */}
+              <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                <button
+                  onClick={() => setCodeTab('node')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                    codeTab === 'node' ? 'bg-cyan-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Node.js / JS
+                </button>
+                <button
+                  onClick={() => setCodeTab('php')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                    codeTab === 'php' ? 'bg-cyan-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  PHP
+                </button>
+                <button
+                  onClick={() => setCodeTab('python')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                    codeTab === 'python' ? 'bg-cyan-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Python
+                </button>
+                <button
+                  onClick={() => setCodeTab('curl')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                    codeTab === 'curl' ? 'bg-cyan-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  cURL
+                </button>
+              </div>
+            </div>
+
+            {/* Code Snippet Box */}
+            <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 relative font-mono text-xs text-cyan-300 overflow-x-auto">
+              <button
+                onClick={() => {
+                  let textToCopy = '';
+                  if (codeTab === 'node') {
+                    textToCopy = `// 1. In your other website (Backend/Frontend):
+const response = await fetch("https://wandervibe-email-service.onrender.com/api/gateway/create-session", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-gateway-key": "${gatewayApiKey}"
+  },
+  body: JSON.stringify({
+    order_id: "ORD_99882",
+    amount: 1500, // ₹1,500
+    customer_name: "Customer Name",
+    customer_email: "customer@gmail.com",
+    purpose: "Website Order #99882",
+    success_url: "https://your-site.com/payment-success",
+    cancel_url: "https://your-site.com/payment-cancel",
+    webhook_url: "https://your-site.com/api/webhook"
+  })
+});
+
+const data = await response.json();
+// 2. Redirect customer to the secure checkout page:
+window.location.href = data.payment_url;`;
+                  } else if (codeTab === 'php') {
+                    textToCopy = `<?php
+// In your PHP Website:
+$payload = json_encode([
+    "order_id" => "ORD_" . time(),
+    "amount" => 1500,
+    "customer_name" => "Customer Name",
+    "customer_email" => "customer@gmail.com",
+    "purpose" => "E-commerce Purchase",
+    "success_url" => "https://your-site.com/success.php",
+    "cancel_url" => "https://your-site.com/cancel.php",
+    "webhook_url" => "https://your-site.com/webhook.php"
+]);
+
+$ch = curl_init("https://wandervibe-email-service.onrender.com/api/gateway/create-session");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-gateway-key: ${gatewayApiKey}"
+]);
+
+$response = json_decode(curl_exec($ch), true);
+curl_close($ch);
+
+// Redirect user to payment checkout:
+header("Location: " . $response["payment_url"]);
+exit;
+?>`;
+                  } else if (codeTab === 'python') {
+                    textToCopy = `import requests
+
+# In your Python / Django / Flask Backend:
+response = requests.post(
+    "https://wandervibe-email-service.onrender.com/api/gateway/create-session",
+    headers={
+        "Content-Type": "application/json",
+        "x-gateway-key": "${gatewayApiKey}"
+    },
+    json={
+        "order_id": "ORD_12345",
+        "amount": 1500,
+        "customer_name": "Rahul Verma",
+        "customer_email": "rahul@gmail.com",
+        "purpose": "Course Enrollment",
+        "success_url": "https://your-site.com/success",
+        "cancel_url": "https://your-site.com/cancel",
+        "webhook_url": "https://your-site.com/api/webhook"
+    }
+)
+
+data = response.json()
+# Redirect customer to: data["payment_url"]`;
+                  } else {
+                    textToCopy = `curl -X POST "https://wandervibe-email-service.onrender.com/api/gateway/create-session" \\
+  -H "Content-Type: application/json" \\
+  -H "x-gateway-key: ${gatewayApiKey}" \\
+  -d '{
+    "order_id": "ORD_99882",
+    "amount": 1500,
+    "customer_name": "John Doe",
+    "customer_email": "john@example.com",
+    "purpose": "Digital Product Purchase",
+    "success_url": "https://your-site.com/success",
+    "cancel_url": "https://your-site.com/cancel"
+  }'`;
+                  }
+                  navigator.clipboard.writeText(textToCopy);
+                  alert("Code snippet copied to clipboard!");
+                }}
+                className="absolute top-4 right-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center space-x-1 border border-slate-700"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Code</span>
+              </button>
+
+              <pre className="whitespace-pre">
+                {codeTab === 'node' && `// 1. In your other website (Backend/Frontend):
+const response = await fetch("https://wandervibe-email-service.onrender.com/api/gateway/create-session", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-gateway-key": "${gatewayApiKey}"
+  },
+  body: JSON.stringify({
+    order_id: "ORD_99882",
+    amount: 1500, // ₹1,500
+    customer_name: "Customer Name",
+    customer_email: "customer@gmail.com",
+    purpose: "Website Order #99882",
+    success_url: "https://your-site.com/payment-success",
+    cancel_url: "https://your-site.com/payment-cancel",
+    webhook_url: "https://your-site.com/api/webhook"
+  })
+});
+
+const data = await response.json();
+// 2. Redirect customer to the secure checkout page:
+window.location.href = data.payment_url;`}
+
+                {codeTab === 'php' && `<?php
+// In your PHP Website:
+$payload = json_encode([
+    "order_id" => "ORD_" . time(),
+    "amount" => 1500,
+    "customer_name" => "Customer Name",
+    "customer_email" => "customer@gmail.com",
+    "purpose" => "E-commerce Purchase",
+    "success_url" => "https://your-site.com/success.php",
+    "cancel_url" => "https://your-site.com/cancel.php",
+    "webhook_url" => "https://your-site.com/webhook.php"
+]);
+
+$ch = curl_init("https://wandervibe-email-service.onrender.com/api/gateway/create-session");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-gateway-key: ${gatewayApiKey}"
+]);
+
+$response = json_decode(curl_exec($ch), true);
+curl_close($ch);
+
+// Redirect user to payment checkout:
+header("Location: " . $response["payment_url"]);
+exit;
+?>`}
+
+                {codeTab === 'python' && `import requests
+
+# In your Python / Django / Flask Backend:
+response = requests.post(
+    "https://wandervibe-email-service.onrender.com/api/gateway/create-session",
+    headers={
+        "Content-Type": "application/json",
+        "x-gateway-key": "${gatewayApiKey}"
+    },
+    json={
+        "order_id": "ORD_12345",
+        "amount": 1500,
+        "customer_name": "Rahul Verma",
+        "customer_email": "rahul@gmail.com",
+        "purpose": "Course Enrollment",
+        "success_url": "https://your-site.com/success",
+        "cancel_url": "https://your-site.com/cancel",
+        "webhook_url": "https://your-site.com/api/webhook"
+    }
+)
+
+data = response.json()
+# Redirect customer to: data["payment_url"]`}
+
+                {codeTab === 'curl' && `curl -X POST "https://wandervibe-email-service.onrender.com/api/gateway/create-session" \\
+  -H "Content-Type: application/json" \\
+  -H "x-gateway-key: ${gatewayApiKey}" \\
+  -d '{
+    "order_id": "ORD_99882",
+    "amount": 1500,
+    "customer_name": "John Doe",
+    "customer_email": "john@example.com",
+    "purpose": "Digital Product Purchase",
+    "success_url": "https://your-site.com/success",
+    "cancel_url": "https://your-site.com/cancel"
+  }'`}
+              </pre>
+            </div>
+          </div>
+
+          {/* Cross-Website Transactions History */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-lg font-bold text-white">Cross-Website Gateway Transactions</h4>
+                <p className="text-xs text-slate-400">Live feed of payments processed through the proxy switch</p>
+              </div>
+              <span className="text-xs text-cyan-400 font-bold bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
+                {gatewayTransactionsList.length} Sessions Logged
+              </span>
+            </div>
+
+            {gatewayTransactionsList.length === 0 ? (
+              <div className="bg-slate-950 p-8 rounded-2xl border border-slate-800 text-center text-xs text-slate-400 space-y-1">
+                <p className="font-semibold text-slate-300">No external gateway transactions yet.</p>
+                <p className="text-[11px] text-slate-500">Generate a test payment link above or integrate the API in your external website to see live payments here!</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Order Reference</th>
+                      <th className="p-3">Customer</th>
+                      <th className="p-3">Purpose</th>
+                      <th className="p-3">Amount</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-sans">
+                    {gatewayTransactionsList.map((tx, i) => (
+                      <tr key={i} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="p-3 font-mono font-bold text-slate-200">
+                          {tx.orderId}
+                          <div className="text-[10px] text-slate-500 font-normal">{tx.sessionId}</div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-semibold text-white">{tx.customerName || 'Guest'}</div>
+                          <div className="text-[10px] text-slate-400">{tx.customerEmail || 'No Email'}</div>
+                        </td>
+                        <td className="p-3 text-slate-300">{tx.purpose}</td>
+                        <td className="p-3 font-bold text-emerald-400 text-sm">
+                          ₹{Number(tx.amount).toLocaleString('en-IN')}
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            tx.status === 'PAID'
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          }`}>
+                            {tx.status === 'PAID' ? '✓ PAID' : '⏳ PENDING'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-400 text-[11px]">
+                          {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+        </div>
       )}
 
       {/* TICKET CANCELLATION CONFIRMATION MODAL */}

@@ -13,10 +13,27 @@ import { Footer } from './components/Footer';
 import { WanderCoinsModal } from './components/WanderCoinsModal';
 import { CaptainHotlineModal } from './components/CaptainHotlineModal';
 import { LegalPolicies } from './components/LegalPolicies';
+import { GatewayCheckout } from './components/GatewayCheckout';
 import { onAuthStateChanged, auth, logoutFirebase, checkRedirectResult, extractGoogleUserData } from './lib/firebase';
 import { ShieldCheck, Megaphone, Bell, Sparkles, Phone, CheckCircle, ArrowRight } from 'lucide-react';
 
 export default function App() {
+  // Check if Gateway Hosted Checkout URL
+  const [gatewaySessionId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const paySession = urlParams.get('pay_session') || urlParams.get('session_id') || urlParams.get('session');
+    if (paySession) return paySession;
+
+    // Check path /pay/:sessionId
+    const pathParts = window.location.pathname.split('/');
+    const payIndex = pathParts.indexOf('pay');
+    if (payIndex !== -1 && pathParts[payIndex + 1]) {
+      return pathParts[payIndex + 1];
+    }
+    return null;
+  });
+
   // Navigation State
   const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'trip-details' | 'safety' | 'legal' | 'admin' | 'profile' | 'my-bookings'>('home');
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
@@ -266,6 +283,11 @@ export default function App() {
   // User missing phone indicator
   const hasMissingPhone = currentUser ? !currentUser.phone || currentUser.phone.trim() === '' : false;
   const userBookings = currentUser ? bookings.filter(b => b.primaryTraveler.email === currentUser.email || b.primaryTraveler.phone === currentUser.phone) : bookings;
+
+  // If hosted gateway checkout session, render standalone page
+  if (gatewaySessionId) {
+    return <GatewayCheckout sessionId={gatewaySessionId} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col selection:bg-emerald-500 selection:text-slate-950">

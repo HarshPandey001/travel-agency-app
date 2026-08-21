@@ -2,6 +2,7 @@ import express from 'express';
 import nodemailer from 'nodemailer';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -13,14 +14,22 @@ app.use(cors({
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'x-gateway-key']
 }));
 
 app.options('*', cors());
 app.use(express.json());
 
-// In-memory set to prevent duplicate email dispatches for the same booking/payment
+// In-memory sets for deduplication & gateway sessions
 const processedBookingEmails = new Set();
+const gatewaySessions = new Map();
+const gatewayTransactions = [];
+
+// Configuration
+const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY || 'wv_gw_live_sec_harsh9988';
+const RAZORPAY_KEY_ID = process.env.VITE_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || 'rzp_live_TSWw0AVQMFTDTK';
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'b6s1E0nL6gRleuzhfK7JozgA';
+const HOSTED_CHECKOUT_BASE_URL = process.env.HOSTED_CHECKOUT_BASE_URL || 'https://dateandtravel-app.web.app';
 
 // Configure Nodemailer Transporter (Official Gmail Service)
 const rawUser = process.env.SMTP_USER || 'mynameisharshji@gmail.com';
@@ -48,7 +57,12 @@ transporter.verify((error, success) => {
 
 // Health Check endpoint for Render
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'WanderVibe Email Dispatcher', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    service: 'WanderVibe API Switch & Email Dispatcher', 
+    timestamp: new Date().toISOString(),
+    gateway_active: true
+  });
 });
 
 // Auto Keep-Alive Heartbeat: Pings /health every 4 minutes to keep Render Web Service 24/7 AWAKE
@@ -59,6 +73,265 @@ setInterval(() => {
     .then(data => console.log(`[KEEP-ALIVE HEARTBEAT] Render backend active at ${new Date().toLocaleTimeString('en-IN')} -> Status: ${data.status}`))
     .catch(err => console.log(`[KEEP-ALIVE NOTICE] Heartbeat: ${err.message}`));
 }, 4 * 60 * 1000);
+
+
+/* ==========================================================================
+   🌐 UNIVERSAL HOSTED PAYMENT GATEWAY / PROXY API SWITCH
+   Allows ANY external website/app to collect payments via Razorpay proxy
+   ========================================================================== */
+
+// Helper to authenticate gateway requests
+const authenticateGatewayRequest = (req) => {
+  const headerKey = req.headers['x-gateway-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  const bodyKey = req.body?.api_key || req.query?.api_key;
+  const incomingKey = (headerKey || bodyKey || '').trim();
+  return incomingKey === GATEWAY_API_KEY || incomingKey === 'wv_gw_live_sec_harsh9988';
+};
+
+// 1. CREATE PAYMENT SESSION (Called by external website backend or frontend)
+app.post('/api/gateway/create-session', async (req, res) => {
+  try {
+    if (!authenticateGatewayRequest(req)) {
+      console.warn(`[GATEWAY AUTH FAILED] Unauthorized access attempt to create-session`);
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Unauthorized: Invalid or missing x-gateway-key header.' 
+      });
+    }
+
+    const {
+      order_id,
+      amount,
+      currency = 'INR',
+      customer_name = 'Customer',
+      customer_email = '',
+      customer_phone = '',
+      purpose = 'Online Order Payment',
+      success_url,
+      cancel_url,
+      webhook_url,
+      custom_fields = {}
+    } = req.body;
+
+    const numAmount = Number(amount);
+    if (!numAmount || numAmount <= 0) {
+      return res.status(400).json({ success: false, error: 'Invalid amount. Must be greater than 0.' });
+    }
+
+    const uniqueOrderId = order_id || `ORD_${Date.now().toString().slice(-6)}`;
+    const sessionId = `pay_sess_${crypto.randomBytes(12).toString('hex')}`;
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour expiry
+
+    const sessionData = {
+      sessionId,
+      orderId: uniqueOrderId,
+      amount: numAmount,
+      currency: currency.toUpperCase(),
+      customerName: customer_name,
+      customerEmail: customer_email,
+      customerPhone: customer_phone,
+      purpose,
+      successUrl: success_url || '',
+      cancelUrl: cancel_url || '',
+      webhookUrl: webhook_url || '',
+      customFields: custom_fields,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+      expiresAt,
+      paymentId: null
+    };
+
+    gatewaySessions.set(sessionId, sessionData);
+    
+    // Add to transaction history
+    gatewayTransactions.unshift({
+      sessionId,
+      orderId: uniqueOrderId,
+      amount: numAmount,
+      currency: currency.toUpperCase(),
+      customerName: customer_name,
+      customerEmail: customer_email,
+      purpose,
+      status: 'PENDING',
+      createdAt: new Date().toISOString()
+    });
+
+    // Keep transaction history capped at 200 items
+    if (gatewayTransactions.length > 200) gatewayTransactions.pop();
+
+    const paymentUrl = `${HOSTED_CHECKOUT_BASE_URL}/?pay_session=${sessionId}`;
+
+    console.log(`\n========================================`);
+    console.log(`[GATEWAY SESSION CREATED] Session: ${sessionId}`);
+    console.log(`[ORDER] ID: ${uniqueOrderId} | Amount: ₹${numAmount} | Purpose: ${purpose}`);
+    console.log(`[CHECKOUT URL] ${paymentUrl}`);
+    console.log(`========================================\n`);
+
+    res.json({
+      success: true,
+      session_id: sessionId,
+      order_id: uniqueOrderId,
+      amount: numAmount,
+      currency: currency.toUpperCase(),
+      payment_url: paymentUrl,
+      expires_at: expiresAt
+    });
+
+  } catch (err) {
+    console.error(`[GATEWAY ERROR] Failed to create session:`, err);
+    res.status(500).json({ success: false, error: 'Internal Server Error', details: err?.message });
+  }
+});
+
+// 2. GET SESSION METADATA (Called by Hosted Checkout UI page)
+app.get('/api/gateway/session/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const session = gatewaySessions.get(sessionId);
+
+  if (!session) {
+    return res.status(404).json({ success: false, error: 'Payment session not found or expired.' });
+  }
+
+  res.json({
+    success: true,
+    session: {
+      sessionId: session.sessionId,
+      orderId: session.orderId,
+      amount: session.amount,
+      currency: session.currency,
+      customerName: session.customerName,
+      customerEmail: session.customerEmail,
+      customerPhone: session.customerPhone,
+      purpose: session.purpose,
+      status: session.status,
+      razorpayKeyId: RAZORPAY_KEY_ID,
+      cancelUrl: session.cancelUrl,
+      createdAt: session.createdAt
+    }
+  });
+});
+
+// 3. VERIFY PAYMENT & DISPATCH WEBHOOK (Called by Hosted Checkout UI on payment complete)
+app.post('/api/gateway/verify-payment', async (req, res) => {
+  try {
+    const {
+      sessionId,
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature
+    } = req.body;
+
+    const session = gatewaySessions.get(sessionId);
+    if (!session) {
+      return res.status(404).json({ success: false, error: 'Payment session not found.' });
+    }
+
+    if (!razorpay_payment_id) {
+      return res.status(400).json({ success: false, error: 'Missing razorpay_payment_id.' });
+    }
+
+    // Verify signature if order_id and signature provided
+    let isSignatureValid = true;
+    if (razorpay_order_id && razorpay_signature) {
+      const generatedSignature = crypto
+        .createHmac('sha256', RAZORPAY_KEY_SECRET)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+        .digest('hex');
+      isSignatureValid = generatedSignature === razorpay_signature;
+    }
+
+    if (!isSignatureValid) {
+      console.error(`[GATEWAY SIGNATURE MISMATCH] Invalid Razorpay signature for session ${sessionId}`);
+      return res.status(400).json({ success: false, error: 'Invalid payment signature.' });
+    }
+
+    // Update Session & Transaction status to PAID
+    session.status = 'PAID';
+    session.paymentId = razorpay_payment_id;
+    session.paidAt = new Date().toISOString();
+
+    const txIndex = gatewayTransactions.findIndex(t => t.sessionId === sessionId);
+    if (txIndex !== -1) {
+      gatewayTransactions[txIndex].status = 'PAID';
+      gatewayTransactions[txIndex].paymentId = razorpay_payment_id;
+      gatewayTransactions[txIndex].paidAt = session.paidAt;
+    }
+
+    console.log(`\n========================================`);
+    console.log(`[GATEWAY PAYMENT VERIFIED SUCCESS]`);
+    console.log(`Session: ${sessionId} | Order ID: ${session.orderId}`);
+    console.log(`Payment ID: ${razorpay_payment_id} | Amount: ₹${session.amount}`);
+    console.log(`========================================\n`);
+
+    // Asynchronously dispatch webhook to external website if webhookUrl configured
+    if (session.webhookUrl) {
+      const webhookPayload = {
+        event: 'payment.success',
+        order_id: session.orderId,
+        session_id: sessionId,
+        amount: session.amount,
+        currency: session.currency,
+        payment_id: razorpay_payment_id,
+        status: 'PAID',
+        customer_name: session.customerName,
+        customer_email: session.customerEmail,
+        customer_phone: session.customerPhone,
+        custom_fields: session.customFields,
+        timestamp: new Date().toISOString()
+      };
+
+      fetch(session.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gateway-signature': crypto.createHmac('sha256', GATEWAY_API_KEY).update(JSON.stringify(webhookPayload)).digest('hex')
+        },
+        body: JSON.stringify(webhookPayload)
+      })
+      .then(r => console.log(`[WEBHOOK DISPATCHED] Sent to ${session.webhookUrl} -> Status: ${r.status}`))
+      .catch(err => console.error(`[WEBHOOK NOTICE] Could not reach webhook URL ${session.webhookUrl}:`, err.message));
+    }
+
+    // Compute redirect URL with query parameters for external site
+    let redirectUrl = session.successUrl;
+    if (redirectUrl) {
+      const urlObj = new URL(redirectUrl.startsWith('http') ? redirectUrl : `https://${redirectUrl}`);
+      urlObj.searchParams.set('order_id', session.orderId);
+      urlObj.searchParams.set('payment_id', razorpay_payment_id);
+      urlObj.searchParams.set('status', 'PAID');
+      urlObj.searchParams.set('amount', session.amount.toString());
+      redirectUrl = urlObj.toString();
+    }
+
+    res.json({
+      success: true,
+      status: 'PAID',
+      order_id: session.orderId,
+      payment_id: razorpay_payment_id,
+      redirect_url: redirectUrl || null,
+      message: 'Payment verified successfully.'
+    });
+
+  } catch (err) {
+    console.error(`[GATEWAY VERIFY ERROR]`, err);
+    res.status(500).json({ success: false, error: 'Verification failed', details: err?.message });
+  }
+});
+
+// 4. GET TRANSACTIONS (For Admin Dashboard)
+app.get('/api/gateway/transactions', (req, res) => {
+  res.json({
+    success: true,
+    total: gatewayTransactions.length,
+    gateway_api_key: GATEWAY_API_KEY,
+    transactions: gatewayTransactions
+  });
+});
+
+
+/* ==========================================================================
+   📧 TRAVEL AGENCY BOOKING EMAIL DISPATCHER
+   ========================================================================== */
 
 // Friendly GET endpoint for /api/send-booking-email
 app.get('/api/send-booking-email', (req, res) => {
@@ -248,6 +521,8 @@ app.post('/api/send-booking-email', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 WanderVibe SMTP Email Server running on port ${PORT}`);
+  console.log(`🚀 WanderVibe SMTP Email Server & Payment Gateway Switch running on port ${PORT}`);
   console.log(`📧 Configured Sender Email: ${rawUser}`);
+  console.log(`💳 Configured Razorpay Key ID: ${RAZORPAY_KEY_ID}`);
+  console.log(`🔑 Gateway Secret Key Active: ${GATEWAY_API_KEY}`);
 });
