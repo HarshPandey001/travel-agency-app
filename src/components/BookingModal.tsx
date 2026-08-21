@@ -41,7 +41,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [paymentOption, setPaymentOption] = useState<'40_ADVANCE' | '100_FULL'>('40_ADVANCE');
 
   // Razorpay Checkout State
-  const [razorpayKey, setRazorpayKey] = useState('rzp_test_TRmIbkocRExllx');
+  const [razorpayKey, setRazorpayKey] = useState((import.meta as any).env?.VITE_RAZORPAY_KEY_ID || 'rzp_test_TRmIbkocRExllx');
   const [isProcessingRazorpay, setIsProcessingRazorpay] = useState(false);
   const [razorpayPaymentId, setRazorpayPaymentId] = useState<string | null>(null);
   const [hasAgreedNoRefund, setHasAgreedNoRefund] = useState(false);
